@@ -1,7 +1,7 @@
 <?php
 
 // Load our initialization library
-require_once('../lib/initialize.php');
+require_once(__DIR__.'/../lib/initialize.php');
 
 
 

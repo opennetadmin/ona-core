@@ -139,7 +139,8 @@ if (file_exists($dbconffile)) {
         exit(1);
     }
 } else {
-    require_once($base.'/../install/install.php');
+    echo "Please run installer first";
+    #require_once($base.'/../install/install.php');
     exit;
 }
 

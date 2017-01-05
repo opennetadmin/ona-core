@@ -1,0 +1,8 @@
+This directory contains the information needed to perform an initial setup of the system.
+
+README:		        This text
+ona-data.xml:	        Initial data required for the system
+ona-table_schema.xml:	Initial database tables
+install.php:	        The installation script ran at first startup
+x-to-x.sql:	        Various SQL upgrade scripts
+x-to-x.php:	        Various PHP upgrade scripts

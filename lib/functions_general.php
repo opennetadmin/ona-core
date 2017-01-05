@@ -44,6 +44,9 @@ EMERGENCY (600): Emergency: system is unusable.
     else
       $username = "anonymous";
 
+    if (!isset($_SERVER['REMOTE_ADDR']))
+	$_SERVER['REMOTE_ADDR'] = 'Unknown/Local';
+
     // TODO possibly look at ignoreEmptyContextAndExtra to get rid of trailing []
     $calling_func = debug_backtrace()[1]['function'];
     $logger->$level($msg, array('func' => $calling_func, 'user' => $username, 'context' => $self['context_name'], 'client_ip' => $_SERVER['REMOTE_ADDR']));
@@ -1099,10 +1102,10 @@ function startSession() {
     global $conf;
 
     // If the command line agent, dcm.pl, is making the request, don't really start a session.
-    if (preg_match('/console-module-interface/', $_SERVER['HTTP_USER_AGENT'])) {
+    if (@preg_match('/console-module-interface/', $_SERVER['HTTP_USER_AGENT'])) {
 
         // Pretend to log them in
-        if (preg_match('/unix_username=([^&]+?)(&|$)/', $_REQUEST['options'], $matches)) {
+        if (@preg_match('/unix_username=([^&]+?)(&|$)/', $_REQUEST['options'], $matches)) {
             $_SESSION['ona']['auth']['user']['username'] = $matches[1];
         }
 
