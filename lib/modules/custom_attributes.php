@@ -29,22 +29,17 @@
 function custom_attribute_add($options="") {
 
     // The important globals
-    global $conf, $self, $onadb;
+    global $self, $onadb;
 
     // Version - UPDATE on every edit!
-    $version = '1.01';
+    $version = '2.00';
 
-    printmsg("DEBUG => custom_attribute_add({$options}) called", 3);
-
-    // Parse incoming options string to an array
-    $options = parse_options($options);
+    printmsg('Called with options: ('.implode (";",$options).')', 'info');
 
     // Return the usage summary if we need to
-    if ($options['help'] or
-       (!$options['subnet'] and !$options['host'] and !$options['vlan']) or
+    if ( (!$options['subnet'] and !$options['host'] and !$options['vlan']) or
        (!$options['type'] and
         !$options['value'])) {
-        // NOTE: Help message lines should not exceed 80 characters for proper display on a console
         $self['error'] = 'ERROR => Insufficient parameters';
         return(array(1,
 <<<EOM
@@ -72,7 +67,7 @@ EOM
 
 
     // If they provided a hostname / ID let's look it up
-    if ($options['host']) {
+    if (isset($options['host'])) {
         list($status, $rows, $host) = ona_find_host($options['host']);
         $table_name_ref = 'hosts';
         $table_id_ref = $host['id'];
@@ -80,7 +75,7 @@ EOM
     }
 
     // If they provided a subnet name or ip
-    else if ($options['subnet']) {
+    else if (isset($options['subnet'])) {
         list($status, $rows, $subnet) = ona_find_subnet($options['subnet']);
         $table_name_ref = 'subnets';
         $table_id_ref = $subnet['id'];
@@ -88,7 +83,7 @@ EOM
     }
 
     // If they provided a vlan name
-    else if ($options['vlan']) {
+    else if (isset($options['vlan'])) {
         list($status, $rows, $vlan) = ona_find_vlan($options['vlan']);
         $table_name_ref = 'vlans';
         $table_id_ref = $vlan['id'];
@@ -96,10 +91,10 @@ EOM
     }
 
     // If we didn't get a record then exit
-    if (!$host['id'] and !$subnet['id'] and !$vlan['id']) {
-        printmsg("DEBUG => No host, subnet or vlan found!",3);
-        $self['error'] = "ERROR => No host, subnet or vlan found!";
-        return(array(4, $self['error'] . "\n"));
+    if (!isset($host['id']) and !isset($subnet['id']) and !isset($vlan['id'])) {
+        $self['error'] = "No host, subnet or vlan found!";
+        printmsg($self['error'], 'warning');
+        return(array(4, $self['error']));
     }
 
     // determine how we are searching for the type
@@ -111,27 +106,27 @@ EOM
     // find the attribute type
     list($status, $rows, $catype) = ona_get_custom_attribute_type_record(array($typesearch => $options['type']));
     if (!$rows) {
-        printmsg("DEBUG => Unable to find custom attribute type: {$options['type']}",3);
-        $self['error'] = "ERROR => Unable to find custom attribute type: {$options['type']}";
-        return(array(5, $self['error'] . "\n"));
+        $self['error'] = "Unable to find custom attribute type: {$options['type']}";
+        printmsg($self['error'], 'warning');
+        return(array(5, $self['error']));
     }
 
 
     // check for existing attributes like this
     list($status, $rows, $record) = ona_get_custom_attribute_record(array('table_name_ref' => $table_name_ref, 'table_id_ref' => $table_id_ref, 'custom_attribute_type_id' => $catype['id']));
     if ($rows) {
-        printmsg("DEBUG => The type '{$catype['name']}' is already in use on {$desc}",3);
-        $self['error'] = "ERROR => The type '{$catype['name']}' is already in use on {$desc}";
-        return(array(6, $self['error'] . "\n"));
+        $self['error'] = "The type '{$catype['name']}' is already in use on {$desc}";
+        printmsg($self['error'], 'warning');
+        return(array(6, $self['error']));
     }
 
     if (!$catype['failed_rule_text']) $catype['failed_rule_text'] = "Not specified.";
 
     // validate the inpute value against the field_validation_rule.
     if ($catype['field_validation_rule'] and !preg_match($catype['field_validation_rule'], $options['value'])) {
-        printmsg("DEBUG => The value '{$options['value']}' does not match field validation rule: {$catype['field_validation_rule']}",3);
-        $self['error'] = "ERROR => The value: '{$options['value']}', does not match field validation rule: {$catype['field_validation_rule']}\\nReason: {$catype['failed_rule_text']}";
-        return(array(7, $self['error'] . "\n"));
+        $self['error'] = "The value: '{$options['value']}', does not match field validation rule: {$catype['field_validation_rule']}\\nReason: {$catype['failed_rule_text']}";
+        printmsg($self['error'], 'warning');
+        return(array(7, $self['error']));
     }
 
     // There is an issue with escaping '=' and '&'.  We need to avoid adding escape characters
@@ -150,13 +145,14 @@ EOM
         )
     );
     if ($status or !$rows) {
-        $self['error'] = "ERROR => custom_attribute_add() SQL Query failed: " . $self['error'];
-        printmsg($self['error'], 0);
-        return(array(8, $self['error'] . "\n"));
+        $self['error'] = "SQL Query failed: " . $self['error'];
+        printmsg($self['error'], 'error');
+        return(array(8, $self['error']));
     }
 
 
-    $text = "INFO => Custom Attribute ADDED to: {$desc}\n";
+    $text = "Custom Attribute ADDED to: {$desc}\n";
+    printmsg($self['error'], 'notice');
 
 
     // Return the message file
@@ -191,21 +187,15 @@ EOM
 function custom_attribute_del($options="") {
 
     // The important globals
-    global $conf, $self, $onadb;
+    global $self, $onadb;
 
     // Version - UPDATE on every edit!
-    $version = '1.01';
+    $version = '2.00';
 
-    printmsg("DEBUG => custom_attribute_del({$options}) called", 3);
-
-    // Parse incoming options string to an array
-    $options = parse_options($options);
+    printmsg('Called with options: ('.implode (";",$options).')', 'info');
 
     // Return the usage summary if we need to
-    if ($options['help'] or
-       (!$options['subnet'] and !$options['host'] and !$options['vlan']) or
-       (!$options['type'] )) {
-        // NOTE: Help message lines should not exceed 80 characters for proper display on a console
+    if ((!isset($options['subnet']) and !isset($options['host']) and !isset($options['vlan'])) or (!isset($options['type']) )) {
         $self['error'] = 'ERROR => Insufficient parameters';
         return(array(1,
 <<<EOM
@@ -234,11 +224,8 @@ EOM
     }
 
 
-    // Sanitize options[commit] (default is no)
-    $options['commit'] = sanitize_YN($options['commit'], 'N');
-
     // If they provided a hostname / ID let's look it up
-    if ($options['host']) {
+    if (isset($options['host'])) {
         list($status, $rows, $host) = ona_find_host($options['host']);
         $table_name_ref = 'hosts';
         $table_id_ref = $host['id'];
@@ -246,7 +233,7 @@ EOM
     }
 
     // If they provided a subnet name or ip
-    else if ($options['subnet']) {
+    else if (isset($options['subnet'])) {
         list($status, $rows, $subnet) = ona_find_subnet($options['subnet']);
         $table_name_ref = 'subnets';
         $table_id_ref = $subnet['id'];
@@ -254,7 +241,7 @@ EOM
     }
 
     // If they provided a vlan name
-    else if ($options['vlan']) {
+    else if (isset($options['vlan'])) {
         list($status, $rows, $vlan) = ona_find_vlan($options['vlan']);
         $table_name_ref = 'vlans';
         $table_id_ref = $vlan['id'];
@@ -262,10 +249,10 @@ EOM
     }
 
     // If we didn't get a record then exit
-    if (!$host['id'] and !$subnet['id'] and !$vlan['id']) {
-        printmsg("DEBUG => No host, subnet or vlan found!",3);
-        $self['error'] = "ERROR => No host, subnet or vlan found!";
-        return(array(1, $self['error'] . "\n"));
+    if (!isset($host['id']) and !isset($subnet['id']) and !isset($vlan['id'])) {
+        $self['error'] = "No host, subnet or vlan found!";
+        printmsg($self['error'], 'notice');
+        return(array(1, $self['error']));
     }
 
     // If the type provided is numeric, check to see if it's an vlan
@@ -275,67 +262,48 @@ EOM
         list($status, $rows, $catype) = ona_get_custom_attribute_type_record(array('id' => $options['type']));
 
         if (!$catype['id']) {
-            printmsg("DEBUG => Unable to find custom attribute type using the ID {$options['name']}!",3);
-            $self['error'] = "ERROR => Unable to find custom attribute type using the ID {$options['name']}!";
-            return(array(2, $self['error'] . "\n"));
+            $self['error'] = "Unable to find custom attribute type using the ID {$options['name']}!";
+            printmsg($self['error'], 'notice');
+            return(array(2, $self['error']));
         }
     }
     else {
         $options['type'] = trim($options['type']);
         list($status, $rows, $catype) = ona_get_custom_attribute_type_record(array('name' => $options['type']));
         if (!$catype['id']) {
-            printmsg("DEBUG => Unable to find custom attribute type using the name {$options['type']}!",3);
-            $self['error'] = "ERROR => Unable to find custom attribute type using the name {$options['type']}!";
-            return(array(3, $self['error'] . "\n"));
+            $self['error'] = "Unable to find custom attribute type using the name {$options['type']}!";
+            printmsg($self['error'], 'notice');
+            return(array(3, $self['error']));
         }
     }
 
     list($status, $rows, $record) = ona_get_custom_attribute_record(array('table_name_ref' => $table_name_ref, 'table_id_ref' => $table_id_ref, 'custom_attribute_type_id' => $catype['id']));
     if (!$rows) {
-        printmsg("DEBUG => Unable to find custom attribute!",3);
-        $self['error'] = "ERROR => Unable to find custom attribute!";
-        return(array(4, $self['error'] . "\n"));
+        $self['error'] = "Unable to find custom attribute type using the name {$catype['name']}!";
+        printmsg($self['error'], 'notice');
+        return(array(4, $self['error']));
     }
 
 
-    // If "commit" is yes, delete the record
-    if ($options['commit'] == 'Y') {
+ #   // Check permissions
+ #   if (!auth('custom_attribute_del')) {
+ #       $self['error'] = "Permission denied!";
+ #       printmsg($self['error'], 'warning');
+ #       return(array(5, $self['error']));
+ #   }
 
-        // Check permissions
-        if (!auth('custom_attribute_del')) {
-            $self['error'] = "Permission denied!";
-            printmsg($self['error'], 0);
-            return(array(5, $self['error'] . "\n"));
-        }
-
-        list($status, $rows) = db_delete_records($onadb, 'custom_attributes', array('id' => $record['id']));
-        if ($status or !$rows) {
-            $self['error'] = "ERROR => custom_attribute_del() SQL Query failed: " . $self['error'];
-            printmsg($self['error'], 0);
-            return(array(6, $self['error'] . "\n"));
-        }
-
-        // Return the success notice
-        $self['error'] = "INFO => Custom Attribute DELETED: {$record['name']} ({$record['value']}) from {$desc}";
-        printmsg($self['error'],0);
-        return(array(0, $self['error'] . "\n"));
+    list($status, $rows) = db_delete_records($onadb, 'custom_attributes', array('id' => $record['id']));
+    if ($status or !$rows) {
+        $self['error'] = "SQL Query failed: " . $self['error'];
+        printmsg($self['error'], 'error');
+        return(array(6, $self['error']));
     }
 
+    // Return the success notice
+    $self['error'] = "Custom Attribute DELETED: {$record['name']} ({$record['value']}) from {$desc}";
+    printmsg($self['error'],'notice');
+    return(array(0, $self['error']));
 
-
-    // Otherwise display the record that would have been deleted
-    $text = <<<EOL
-Record(s) NOT DELETED (see "commit" option)
-Displaying record(s) that would have been deleted:
-
-    ASSOCIATED WITH: {$desc}
-    NAME: {$record['name']}
-    VALUE: {$record['value']}
-
-
-EOL;
-
-    return(array(6, $text));
 
 }
 
@@ -574,21 +542,17 @@ EOM
 function custom_attribute_display($options="") {
 
     // The important globals
-    global $conf, $self, $onadb;
+    global $self, $onadb;
 
     $text_array = array();
 
     // Version - UPDATE on every edit!
-    $version = '1.02';
+    $version = '2.00';
 
-    printmsg("DEBUG => custom_attribute_display({$options}) called", 3);
-
-    // Parse incoming options string to an array
-    $options = parse_options($options);
+    printmsg('Called with options: ('.implode (";",$options).')', 'info');
 
     // Return the usage summary if we need to
-    if ($options['help'] or (!$options['host'] and !$options['id'] and !$options['subnet'] and !$options['vlan'])) {
-        // NOTE: Help message lines should not exceed 80 characters for proper display on a console
+    if ((!isset($options['host']) and !isset($options['id']) and !isset($options['subnet']) and !isset($options['vlan']))) {
         $self['error'] = 'ERROR => Insufficient parameters';
         return(array(1,
 <<<EOM
@@ -619,12 +583,13 @@ EOM
 
 
     // if a type was set, check if it is associated with the host or subnet and return 1 or 0
-    if ($options['type']) {
+    if (isset($options['type'])) {
         $field = (is_numeric($options['type'])) ? 'id' : 'name';
         list($status, $rows, $catype) = ona_get_custom_attribute_type_record(array($field => $options['type']));
         // error if we cant find the type specified
         if (!$catype['id']) {
-            $self['error'] = "ERROR => The custom attribute type specified, {$options['type']}, does not exist!";
+            $self['error'] = "The custom attribute type specified, {$options['type']}, does not exist!";
+            printmsg($self['error'], 'warning');
             return(array(5, $self['error']));
         }
 
@@ -632,12 +597,13 @@ EOM
     }
 
     // Search for the host first
-    if ($options['host']) {
+    if (isset($options['host'])) {
         list($status, $rows, $host) = ona_find_host($options['host']);
 
         // Error if the host doesn't exist
         if (!$host['id']) {
-            $self['error'] = "ERROR => The host specified, {$options['host']}, does not exist!";
+            $self['error'] = "The host specified, {$options['host']}, does not exist!";
+            printmsg($self['error'], 'warning');
             return(array(2, $self['error']));
         } else {
             $where['table_id_ref'] = $host['id'];
@@ -645,18 +611,19 @@ EOM
             list($status, $rows, $cas) = db_get_records($onadb,'custom_attributes', $where );
         }
 
-        $anchor = 'host';
-        $desc = $host['fqdn'];
+        //$anchor = 'host';
+        //$desc = $host['fqdn'];
 
     }
 
     // Search for subnet
-    if ($options['subnet']) {
+    if (isset($options['subnet'])) {
         list($status, $rows, $subnet) = ona_find_subnet($options['subnet']);
 
         // Error if the record doesn't exist
         if (!$subnet['id']) {
-            $self['error'] = "ERROR => The subnet specified, {$options['subnet']}, does not exist!";
+            $self['error'] = "The subnet specified, {$options['subnet']}, does not exist!";
+            printmsg($self['error'], 'warning');
             return(array(3, $self['error']));
         } else {
             $where['table_id_ref'] = $subnet['id'];
@@ -664,18 +631,19 @@ EOM
             list($status, $rows, $cas) = db_get_records($onadb,'custom_attributes', $where );
         }
 
-        $anchor = 'subnet';
-        $desc = $subnet['description'];
+        //$anchor = 'subnet';
+        //$desc = $subnet['description'];
 
     }
 
     // Search for vlan
-    if ($options['vlan']) {
+    if (isset($options['vlan'])) {
         list($status, $rows, $vlan) = ona_find_vlan($options['vlan']);
 
         // Error if the record doesn't exist
         if (!$vlan['id']) {
-            $self['error'] = "ERROR => The VLAN specified, {$options['vlan']}, does not exist!";
+            $self['error'] = "The VLAN specified, {$options['vlan']}, does not exist!";
+            printmsg($self['error'], 'warning');
             return(array(3, $self['error']));
         } else {
             $where['table_id_ref'] = $vlan['id'];
@@ -683,8 +651,8 @@ EOM
             list($status, $rows, $cas) = db_get_records($onadb,'custom_attributes', $where );
         }
 
-        $anchor = 'vlan';
-        $desc = $vlan['description'];
+        //$anchor = 'vlan';
+        //$desc = $vlan['description'];
 
     }
 
@@ -692,51 +660,32 @@ EOM
     if ($options['id']) {
         list($status, $rows, $ca) = ona_get_custom_attribute_record(array('id' => $options['id']));
         if (!$ca['id']) {
-            $self['error'] = "ERROR => The custom attribute specified, {$options['id']}, is invalid!";
+            $self['error'] = "The custom attribute specified, {$options['id']}, is invalid!";
+            printmsg($self['error'], 'warning');
             return(array(4, $self['error']));
         }
 
-	$text_array = $ca;
+	      $text_array = $ca;
 
-        $text .= "CUSTOM ATTRIBUTE ENTRY RECORD ({$ca['id']})\n";
-        $text .= format_array($ca);
-    } elseif ($options['type']) {
+    } elseif (isset($options['type'])) {
         // If we requested type, now is the time to return a response if it is found associated.
         if ($cas[0]) {
-            $text .= '1';
             $text_array['has_attribute'] = 'Y';
         } else {
-            $text .= '0';
             $text_array['has_attribute'] = 'N';
         }
     } else {
-
-        // Build text to return
-        $text  .= strtoupper($anchor) . " CUSTOM ATTRIBUTE RECORDS ({$desc})\n";
-
         // Display the record(s)
         $i = 0;
         do {
-            $text .= "\nASSOCIATED CUSTOM ATTRIBUTE ENTRY RECORD ({$i} of {$rows})\n";
-            $text .= format_array($cas[$i]);
-    
             list($status, $carows, $ca) = ona_get_custom_attribute_type_record(array('id' => $cas[$i]['custom_attribute_type_id']));
-            $text_array[$ca['name']]=$cas[$i]['value'];
-    
+            $text_array['custom_attributes'][$ca['name']]=$cas[$i]['value'];
             $i++;
         } while ($i < $rows);
     }
 
-    // change the output format if other than default
-    if ($options['format'] == 'json') {
-        $text = $text_array;
-    } 
-    if ($options['format'] == 'yaml') {
-        $text = $text_array;
-    }
-
     // Return the success notice
-    return(array(0, $text));
+    return(array(0, $text_array));
 
 }
 

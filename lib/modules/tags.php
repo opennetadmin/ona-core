@@ -69,7 +69,7 @@ EOM
     $options['type'] = strtolower(trim($options['type']));
     if (!in_array($options['type'], $allowed_types)) {
         $self['error'] = "Invalid tag type: {$options['type']}";
-        printmsg($self['error'], 'notice');
+        printmsg($self['error'], 'warning');
         return(array(1, $self['error']));
     }
 
@@ -77,7 +77,7 @@ EOM
     $options['name'] = preg_replace('/\s+/', '-', trim($options['name']));
     if (preg_match('/[@$%^*!\|,`~<>{}]+/', $options['name'])) {
         $self['error'] = "Invalid character in tag name";
-        printmsg($self['error'], 'notice');
+        printmsg($self['error'], 'warning');
         return(array(1, $self['error']));
     }
     $options['reference'] = (trim($options['reference']));
@@ -88,7 +88,7 @@ EOM
 
     if ($status or !$rows) {
         $self['error'] = "Unable to find a {$options['type']} matching {$options['reference']}";
-        printmsg($self['error'], 'notice');
+        printmsg($self['error'], 'warning');
         return(array(1, $self['error']));
     }
 
@@ -98,7 +98,7 @@ EOM
     foreach ($tags as $t) {
       if (in_array($options['name'], $t)) {
         $self['error'] = "The tag {$options['name']} is already associated with this {$options['type']}!";
-        printmsg($self['error'], 'notice');
+        printmsg($self['error'], 'warning');
         return(array(3, $self['error']));
       }
     }
@@ -115,7 +115,7 @@ EOM
     $id = ona_get_next_id('tags');
     if (!$id) {
         $self['error'] = "The ona_get_next_id() call failed!";
-        printmsg($self['error'], 'notice');
+        printmsg($self['error'], 'warning');
         return(array(5, $self['error']));
     }
     printmsg("DEBUG => ID for new tag: $id", 3);
@@ -140,7 +140,7 @@ EOM
 
     // Return the success notice
     $self['error'] = "{$options['type']} TAG ADDED: {$options['name']} to {$reference['name']}({$reference['id']}).";
-    printmsg($self['error'],'info');
+    printmsg($self['error'],'notice');
     return(array(0, $self['error']));
 }
 
@@ -184,35 +184,12 @@ function tag_del($options="") {
 
     printmsg('Called with options: ('.implode (";",$options).')', 'info');
 
-    // Parse incoming options string to an array
-    $options = parse_options($options);
-
     // Return the usage summary if we need to
-    if ((!$options['tag']) and !($options['type'] and $options['name'] and $options['reference']) ) {
-        // NOTE: Help message lines should not exceed 80 characters for proper display on a console
-        $self['error'] = 'ERROR => Insufficient parameters';
-        return(array(1,
-<<<EOM
-
-tag_del-v{$version}
-Deletes an tag from the database
-
-  Synopsis: tag_del [KEY=VALUE] ...
-
-  Required:
-    tag=ID             ID of the tag to delete
-
-EOM
-
-        ));
+    if ((!isset($options['tag'])) and !($options['type'] and $options['name'] and $options['reference']) ) {
+        $self['error'] = 'Insufficient parameters';
+        return(array(1, $self['error']));
     }
 
-
-    // If the tag provided is numeric, check to see if it's an tag
-    if (is_numeric($options['tag'])) {
-        // See if it's a tag_id
-        list($status, $rows, $tag) = db_get_record($onadb,'tags', array('id' => $options['tag']));
-    }
 
     if (isset($options['name'])) {
 
@@ -220,9 +197,9 @@ EOM
 
     }
 
-    if (!$tag['id']) {
+    if (!isset($tag['id'])) {
         $self['error'] = "Unable to find tag {$options['name']}";
-        printmsg($self['error'], 'notice');
+        printmsg($self['error'], 'warning');
         return(array(2, $self['error']));
     }
 
@@ -231,7 +208,7 @@ EOM
 #        // Check permissions
 #        if (! (auth('host_del') or auth('subnet_del')) ) {
 #            $self['error'] = "Permission denied!";
-#            printmsg($self['error'], 'notice');
+#            printmsg($self['error'], 'warning');
 #            return(array(10, $self['error']));
 #        }
 
@@ -244,7 +221,7 @@ EOM
 
     // Return the success notice
     $self['error'] = "TAG DELETED: {$tag['name']} from {$tag['type']}[{$tag['reference']}]";
-    printmsg($self['error'], 'info');
+    printmsg($self['error'], 'notice');
     return(array(0, $self['error']));
 
 

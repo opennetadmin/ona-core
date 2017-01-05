@@ -59,7 +59,6 @@ class Subnets {
 
    public function tags($request, $response, $args) {
 
-     // Get the tag module
      require_once($GLOBALS['base'].'/lib/modules/tags.php');
 
      $args['reference']=$args['subnet'];
@@ -86,17 +85,19 @@ class Subnets {
      return $response->withJson($output);
    }
 
-   public function ca($request, $response, $args) {
-     // Get the custom attribute module
-     require_once($GLOBALS['base'].'/lib/modules/custom_attributes.php');
 
-     $args['reference']=$args['subnet'];
-     $args['type']='subnet';
+
+
+
+
+   public function ca($request, $response, $args) {
+
+     require_once($GLOBALS['base'].'/lib/modules/custom_attributes.php');
 
      // Process various method types
      switch ($request->getMethod()) {
        case 'GET':
-         //$output = process_output(subnet_display($args));
+         $output = process_output(custom_attribute_display($args + (array)$request->getParsedBody()));
          break;
        case 'DELETE':
          $output = process_output(custom_attribute_del($args + (array)$request->getParsedBody()));
