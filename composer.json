@@ -25,6 +25,10 @@
     },
     "require": {
         "php": ">=5.5.0",
+        "ext-gmp": "*",
+        "ext-mbstring": "*",
+        "ext-mysqli": "*",
+        "ext-xml": "*",
         "adodb/adodb-php": "~5.9",
         "slim/slim": "^3.0",
         "monolog/monolog": ">=1.6.0"
