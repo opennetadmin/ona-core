@@ -14,7 +14,7 @@ class Subnets {
      // Process various method types
      switch ($request->getMethod()) {
        case 'GET':
-         $output = process_output(subnets($args));
+         $output = process_output(subnets($args + (array)$request->getQueryParams()));
          break;
        case 'POST':
          $output = process_output(subnet_add($request->getParsedBody()));

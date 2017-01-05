@@ -46,7 +46,90 @@ function subnets($options="") {
     $text_array = array();
     $text_array['module_version'] = $version;
 
-    list($status, $rows, $subnets) = db_get_records($onadb, 'subnets', 'id >0');
+
+
+    // Start building the "where" clause for the sql query to find the subnets to display
+    // DISPLAY ALL
+    $where = "id > 0";
+    $and = " AND ";
+
+    // enable or disable wildcards
+    $wildcard = '%';
+    if ($options['nowildcard']) $wildcard = '';
+
+    // VLAN ID
+    if ($options['vlan_id']) {
+        $where .= $and . "vlan_id = " . $onadb->qstr($options['vlan_id']);
+        $and = " AND ";
+    }
+
+    // SUBNET TYPE
+    if ($options['type']) {
+        $where .= $and . "subnet_type_id = " . $onadb->qstr($options['type']);
+        $and = " AND ";
+    }
+
+    // SUBNET NAME
+    if ($options['name']) {
+        // This field is always upper case
+        $options['name'] = strtoupper($options['name']);
+        $where .= $and . "name LIKE " . $onadb->qstr($wildcard.$options['name'].$wildcard);
+        $and = " AND ";
+    }
+
+    // IP ADDRESS
+    if ($options['ip']) {
+        // Build $ip and $ip_end from $options['ip_subnet'] and $options['ip_subnet_thru']
+        $ip = ip_complete($options['ip'], '0');
+        if ($options['endip']) {
+            $ip = ip_complete($options['ip'], '0');
+            $ip_end = ip_complete($options['endip'], '255');
+
+            // Find out if $ip and $ip_end are valid
+            $ip = ip_mangle($ip, 'numeric');
+            $ip_end = ip_mangle($ip_end, 'numeric');
+            if ($ip != -1 and $ip_end != -1) {
+                // Find subnets between the specified ranges
+                $where .= $and . " ip_addr >= " . $ip . " AND ip_addr <= " . $ip_end;
+                $and = " AND ";
+            }
+        }
+        else {
+            list($status, $rows, $record) = ona_find_subnet($ip);
+            if($rows) {
+                $where .= $and . " id = " . $record['id'];
+                $and = " AND ";
+            }
+       }
+    }
+
+    // tag
+    if ($options['tag']) {
+        $where .= $and . "id in (select reference from tags where type like 'subnet' and name like " . $onadb->qstr($options['tag']) . ")";
+        $and = " AND ";
+
+    }
+
+    // custom attribute type
+    if ($options['custom_attribute_type']) {
+        $where .= $and . "id in (select table_id_ref from custom_attributes where table_name_ref like 'subnets' and custom_attribute_type_id = (SELECT id FROM custom_attribute_types WHERE name = " . $onadb->qstr($options['custom_attribute_type']) . "))";
+        $and = " AND ";
+        $cavaluetype = "and custom_attribute_type_id = (SELECT id FROM custom_attribute_types WHERE name = " . $onadb->qstr($options['custom_attribute_type']) . ")";
+    }
+
+    // custom attribute value
+    if ($options['ca_value']) {
+        $where .= $and . "id in (select table_id_ref from custom_attributes where table_name_ref like 'subnets' {$cavaluetype} and value like " . $onadb->qstr($wildcard.$options['ca_value'].$wildcard) . ")";
+        $and = " AND ";
+    }
+
+
+    list ($status, $rows, $subnets) = db_get_records( $onadb, 'subnets', $where);
+
+    if (!$rows) {
+      $text_array['status_msg'] = "No subnet records were found";
+      return(array(0, $text_array));
+    }
 
     $i=0;
     foreach ($subnets as $subnet) {

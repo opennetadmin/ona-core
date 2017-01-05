@@ -15,7 +15,8 @@ The following is the initial install process based on ubuntu 16.04
 * cd /opt
 * git clone https://github.com/opennetadmin/ona-core.git -b dev
 * cd ona-core
-* composer -vv update
+* composer -vv install
+* php $PWD/install/install.php
 
 * set up apache
 ```
