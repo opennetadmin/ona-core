@@ -2,8 +2,9 @@
 <?php
 
 // Load our initialization library
-require_once(__DIR__.'/../lib/initialize.php');
+@require_once(__DIR__.'/../lib/initialize.php');
 
+require_once(__DIR__.'/../vendor/adodb/adodb-php/adodb-xmlschema03.inc.php');
 
 // Init and setup some variables.
 $text = '';
@@ -83,6 +84,7 @@ CHECKING PREREQUISITES...
   PHP mysqli function:                        $hasmysql
   PHP mbstring function:                      $hasmbstring
   $base/etc dir writable:                     $dbconfwrite
+
 
 EOL;
 }
@@ -434,19 +436,17 @@ if ($install_submit == 'Y' && $upgrade == 'Y') {
 // This is the section for an brand new install
 function new_install() {
 
-  echo "\n\n";
-  global $text,$xmlfile_data,$xmlfile_tables,$dbconffile;
+    global $text,$xmlfile_data,$xmlfile_tables,$dbconffile,$status;
 
-  // Gather info
-  $dbtype = 'mysqli'; $adotype = $dbtype;
-  $database_host = promptUser("Database host? ", 'localhost');
-  $admin_login = promptUser("Database admin? ", 'root');
-  $admin_passwd = promptUser("Database admin password? ", '');
-  $sys_login = promptUser("Application Database user name? ", 'ona_sys');
-  $sys_passwd = promptUser("Application Database user password? ", 'changeme');
-  $database_name = promptUser("Database name? ona_", 'default');
-  $default_domain = promptUser("Default DNS domain? ", 'example.com');
-
+    // Gather info
+    $dbtype = 'mysqli'; $adotype = $dbtype;
+    $database_host = promptUser("Database host? ", 'localhost');
+    $admin_login = promptUser("Database admin? ", 'root');
+    $admin_passwd = promptUser("Database admin password? ", '');
+    $sys_login = promptUser("Application Database user name? ", 'ona_sys');
+    $sys_passwd = promptUser("Application Database user password? ", 'changeme');
+    $database_name = promptUser("Database name? ona_", 'default');
+    $default_domain = promptUser("Default DNS domain? ", 'example.com');
 
     // Just to keep things a little bit grouped, lets prepend the database with ona_
     $database_name = 'ona_'.$database_name;
@@ -462,6 +462,7 @@ function new_install() {
     $ona_contexts[$context_name]['description']   = 'Default data context';
     $ona_contexts[$context_name]['context_color'] = '#D3DBFF';
 
+    $text .= "\n";
 
     // Make an initial connection to a DB server without specifying a database
     $db = ADONewConnection($adotype);
@@ -470,7 +471,7 @@ function new_install() {
     if (!$db->IsConnected()) {
         $status++;
         $text .= "Failed to connect to '{$database_host}' as '{$admin_login}'.\n".$db->ErrorMsg()."\n";
-        printmsg("INFO => Unable to connect to server '$database_host'. ".$db->ErrorMsg(),0);
+        printmsg("Unable to connect to server '$database_host'. ".$db->ErrorMsg(),'error');
     } else {
         $text .= "Connected to '{$database_host}' as '{$admin_login}'.\n";
 
@@ -478,7 +479,7 @@ function new_install() {
         if (@$db->Execute("DROP DATABASE IF EXISTS {$database_name}")) {
             //@$db->Execute("DROP USER IF EXISTS '{$sys_login}'@'%'");
             $text .= "Dropped existing instance of '{$database_name}'.\n";
-            printmsg("INFO => Dropped existing DB: $database_name",0);
+            printmsg("Dropped existing DB: $database_name",'notice');
         }
         else {
             $status++;
@@ -493,12 +494,12 @@ function new_install() {
         $sqlarray = $datadict->CreateDatabase($database_name);
         if ($datadict->ExecuteSQLArray($sqlarray) == 2) {
             $text .= "Created new database '{$database_name}'.\n";
-            printmsg("INFO => Added new DB: $database_name",0);
+            printmsg("Added new DB: $database_name",'notice');
         }
         else {
             $status++;
             $text .= "Failed to create new database '{$database_name}'.\n".$db->ErrorMsg()."\n";
-            printmsg("ERROR => Failed to create new database '{$database_name}'. ".$db->ErrorMsg(),0);
+            printmsg("Failed to create new database '{$database_name}'. ".$db->ErrorMsg(),'error');
         }
 
 
@@ -516,11 +517,11 @@ function new_install() {
             // Execute the SQL on the database
             if ($schema->ExecuteSchema( $sql ) == 2) {
                 $text .= "Creating and updating tables within database '{$database_name}'.\n";
-                printmsg("INFO => Creating and updating tables within new DB: {$database_name}",0);
+                printmsg("Creating and updating tables within new DB: {$database_name}",'notice');
             } else {
                 $status++;
                 $text .= "There was an error processing tables.\n".$db->ErrorMsg()."\n";
-                printmsg("ERROR => There was an error processing tables: ".$db->ErrorMsg(),0);
+                printmsg("There was an error processing tables: ".$db->ErrorMsg(),'error');
             }
 
              // Load initial data into the new tables
@@ -532,32 +533,30 @@ function new_install() {
                 // Execute the SQL on the database
                 if ($schema->ExecuteSchema( $sql ) == 2) {
                     $text .= "Loaded tables with default data.\n";
-                    printmsg("INFO => Loaded data to new DB: {$database_name}",0);
+                    printmsg("Loaded data to new DB: {$database_name}",'notice');
                 } else {
                     $status++;
                     $text .= "Failed load default data.\n".$db->ErrorMsg()."\n";
-                    printmsg("ERROR => There was an error loading the data: ".$db->ErrorMsg(),0);
+                    printmsg("There was an error loading the data: ".$db->ErrorMsg(),'error');
                 }
             }
 
             // Add the system user to the database
             // Run the query
           if ($status == 0) {
-
             // it is likely that this method here is mysql only?
             if($db->Execute("GRANT ALL ON {$database_name}.* TO '{$sys_login}'@'localhost' IDENTIFIED BY '{$sys_passwd}'")) {
                 $db->Execute("GRANT ALL ON {$database_name}.* TO '{$sys_login}'@'%' IDENTIFIED BY '{$sys_passwd}'");
                 $db->Execute("GRANT ALL ON {$database_name}.* TO '{$sys_login}'@'{$database_host}' IDENTIFIED BY '{$sys_passwd}'");
                 $db->Execute("FLUSH PRIVILEGES");
                 $text .= "Created system user '{$sys_login}'.\n";
-                printmsg("INFO => Created new DB user: {$sys_login}",0);
+                printmsg("Created new DB user: {$sys_login}",'notice');
             }
             else {
                 $status++;
                 $text .= "Failed to create system user '{$sys_login}'.\n".$db->ErrorMsg()."\n";
-                printmsg("ERROR => There was an error creating DB user: ".$db->ErrorMsg(),0);
+                printmsg("There was an error creating DB user: ".$db->ErrorMsg(),'error');
             }
-
 
             // add the default domain to the system
             // This is a manual add with hard coded values for timers.
@@ -608,7 +607,7 @@ EOL;
         } else {
             $status++;
             $text .= "Failed to select DB '{$database_name}'.\n".$db->ErrorMsg()."\n";
-            printmsg("ERROR => Failed to select DB: {$database_name}.  ".$db->ErrorMsg(),0);
+            printmsg("Failed to select DB: {$database_name}.  ".$db->ErrorMsg(),'error');
         }
 
 
@@ -624,7 +623,7 @@ EOL;
                 $text .= "Please remove '{$runinstall}' manually.\n";
               }
             }
-            $text .= "You can now go the following URL in your browser: ".parse_url($_SERVER['REQUEST_URI'],PHP_URL_PATH)."' using OpenNetAdmin!\nYou can log in as 'admin' with a password of 'admin'\nEnjoy!";
+            $text .= "\nYou can log in as 'admin' with a password of 'admin'\nEnjoy!";
         }
 
         // Close the database connection

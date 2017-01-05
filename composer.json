@@ -39,6 +39,6 @@
       }
     },
     "scripts": {
-        "post-update-cmd": "php install/install.php"
+        "post-update-cmd": "echo 'Unable to open database config file. Please run installer: php $PWD/install/install.php'"
     }
 }

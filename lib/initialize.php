@@ -26,6 +26,9 @@ $conf_default = array (
     // For possible values see the $ona_contexts() array  in the database_settings.php file
     'default_context'        => 'DEFAULT',
 
+    // set a max session lifetime
+    'cookie_life'            => '172800',
+
     /* Settings for dcm.pl */
     'dcm_module_dir'         => "$base/modules",
     'plugin_dir'             => "$base/local/plugins",
@@ -139,9 +142,9 @@ if (file_exists($dbconffile)) {
         exit(1);
     }
 } else {
-    echo "Please run installer first";
-    #require_once($base.'/../install/install.php');
-    exit;
+#    echo "Unable to open database config file: $dbconffile\n";
+#    echo "Please run installer: php ${base}/install/install.php\n";
+#    exit;
 }
 
 /*

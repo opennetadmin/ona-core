@@ -47,6 +47,9 @@ EMERGENCY (600): Emergency: system is unusable.
     if (!isset($_SERVER['REMOTE_ADDR']))
 	$_SERVER['REMOTE_ADDR'] = 'Unknown/Local';
 
+    if (!isset($self['context_name']))
+	$self['context_name'] = 'Unknown';
+
     // TODO possibly look at ignoreEmptyContextAndExtra to get rid of trailing []
     $calling_func = debug_backtrace()[1]['function'];
     $logger->$level($msg, array('func' => $calling_func, 'user' => $username, 'context' => $self['context_name'], 'client_ip' => $_SERVER['REMOTE_ADDR']));
