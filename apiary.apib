@@ -1,0 +1,80 @@
+FORMAT: 1A
+
+# OpenNetAdmin API
+  The ONA api info
+# Group Subnets
+
+## Subnet list [/subnets{?name,type,ip,endip,tag,catype,cavalue}]
+
+### List all subnets [GET]
+
+List all subnets in ONA. Optionally provide elements to narrow the returned list.
+
++ Parameters 
+  + name: `MY-LAN` (optional) - List subnets matching the string.  Use % as a wildcard character.
+  + type: `WAN` (optional) - Existing subnet type defined within ONA.
+  + ip: `192.168` (optional) - IP address, any single IP will match the containing subnet. Any missing IPv4 octets will be filled with a 0.
+  + endip: `192.168.255.255` (optional) - Must be used in combination with the `ip` option. Provides the end IP in a range of IP addresses to match. Any missing IPv4 octets will be filled with a 255. 
+  + tag: `mytag,tag2` (optional) - One or more tags to match comma separated.
+  + catype: `nmap_scan` (optional) - Subnet with a custom attribute type matching string.
+  + cavalue: `Y` (optional) - Subnet with a custom attribute value matching string.
+     
++ Response 200 (application/json)
+  + Attributes (Subnet)
+
+
+### Create a new subnet [POST]
+
+Creates a new subnet
+
++ Request (application/json)
+  + Attributes (Subnet Add)
+
++ Response 200 (application/json)
+  + Attributes (Subnet)
+
+## Subnet [/subnets/{subnet}{?verbose}]
+Perform operations on a specific subnet
+
+### List single subnet [GET]
+Return information about a single subnet.  Optionally get a verbose output of information.
+
++ Parameters
+  + subnet: `192.168.0.0` - Name or IP of a subnet.
+  + verbose: `Y` (optional) - Display more detailed information about the subnet.
+
++ Response 200 (application/json)
+  + Attributes (Subnet)
+
+# Data Structures
+
+## `Status` (object)
+  + status_code: `0` (number) - Status code from module
+  + status_msg: `Success fully did the thing you asked` (string) - A human readable status message
+
+## `Subnet` (object)
+  + include Status
+  + subnets
+    + id: `22` (number) - Database unique ID
+    + ip_addr: `3232235520` (number) - Numeric representation of an IPv4 or IPv6 address
+    + ip_addr_text: `192.168.0.0` (string) - IPv4 or IPv6 address in a dotted notation
+    + ip_mask: `4294967040` (string) - Numeric representation of a network mask
+    + ip_mask_cidr: `24` (number) - CIDR value for mask
+    + ip_mask_text: `255.255.255.0` (string) - Dotted representation of network mask
+    + name: `LAN-EXAMPLE` (string) - Name of the subnet
+    + subnet_type_id: `13` (string) - Database uniqui ID for the subnet type
+    + subnet_type_name: `LAN` (string) - Name of the subnets type
+
+## `Subnet Add` (object)
+  + name: `LAN-EXAMPLE` (string) - Name of the subnet
+  + type: `LAN` (string) - Name of the subnets type
+  + ip: `192.168.0.0` (string) - IPv4 or IPv6 address in any std format
+  + netmask: `255.255.255.0` (string) - IP netmask in dotted or CIDR format
+  + vlan: `vlan001` (string, optional) -  Existing vlan name, number to associate this subnet with
+  + campus: `CAMPUS` (string, optional) - VLAN campus name or id that `vlan` is assigned to
+
+
+
+    
+
+

@@ -31,6 +31,11 @@ use ONA\controllers;
 // Initiate slim
 $app = new \Slim\App($slimconfig);
 
+// Make the root path redirect to document
+$app->get('/', function ($request, $response) {
+  return $response->withRedirect ((string)($request->getUri()->withPath('/api-doc.html')));
+});
+
 // Define routes
 $app->group('/v1', function () {
 

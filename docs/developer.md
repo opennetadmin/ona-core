@@ -3,6 +3,13 @@ Developer info and standards
 
 This doc will likely be a mess but the goal is to try and document some development methods I'm using here.
 
+API Documentation
+=================
+
+I am currently using apiary.io API schema method (api-blueprint).  The file `ona-api-spec.apib` should be updated to reflect any changes to the API specification.
+
+Once the file is updated, an updated version of the html document should be produced. Currently using aglio to do this:
+* `aglio -i apiary.apib -o www/api-doc.html`
 
 releasing
 =========

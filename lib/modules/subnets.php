@@ -54,11 +54,11 @@ function subnets($options="") {
     $and = " AND ";
 
     // enable or disable wildcards
-    $wildcard = '%';
-    if ($options['nowildcard']) $wildcard = '';
+#    $wildcard = '%';
+#    if ($options['nowildcard']) $wildcard = '';
 
     // VLAN ID
-    if ($options['vlan_id']) {
+    if ($options['vlan']) {
         $where .= $and . "vlan_id = " . $onadb->qstr($options['vlan_id']);
         $and = " AND ";
     }
@@ -105,21 +105,21 @@ function subnets($options="") {
 
     // tag
     if ($options['tag']) {
-        $where .= $and . "id in (select reference from tags where type like 'subnet' and name like " . $onadb->qstr($options['tag']) . ")";
+        $where .= $and . "id in (select reference from tags where type like 'subnet' and name in ('". implode('\',\'', explode (',',$options['tag']) ) . "'))";
         $and = " AND ";
 
     }
 
     // custom attribute type
-    if ($options['custom_attribute_type']) {
-        $where .= $and . "id in (select table_id_ref from custom_attributes where table_name_ref like 'subnets' and custom_attribute_type_id = (SELECT id FROM custom_attribute_types WHERE name = " . $onadb->qstr($options['custom_attribute_type']) . "))";
+    if ($options['catype']) {
+        $where .= $and . "id in (select table_id_ref from custom_attributes where table_name_ref like 'subnets' and custom_attribute_type_id = (SELECT id FROM custom_attribute_types WHERE name = " . $onadb->qstr($options['catype']) . "))";
         $and = " AND ";
-        $cavaluetype = "and custom_attribute_type_id = (SELECT id FROM custom_attribute_types WHERE name = " . $onadb->qstr($options['custom_attribute_type']) . ")";
+        $cavaluetype = "and custom_attribute_type_id = (SELECT id FROM custom_attribute_types WHERE name = " . $onadb->qstr($options['catype']) . ")";
     }
 
     // custom attribute value
-    if ($options['ca_value']) {
-        $where .= $and . "id in (select table_id_ref from custom_attributes where table_name_ref like 'subnets' {$cavaluetype} and value like " . $onadb->qstr($wildcard.$options['ca_value'].$wildcard) . ")";
+    if ($options['cavalue']) {
+        $where .= $and . "id in (select table_id_ref from custom_attributes where table_name_ref like 'subnets' {$cavaluetype} and value like " . $onadb->qstr($wildcard.$options['cavalue'].$wildcard) . ")";
         $and = " AND ";
     }
 
@@ -136,12 +136,12 @@ function subnets($options="") {
       // get subnet type name
       list($status, $rows, $sntype) = ona_get_subnet_type_record(array('id' => $subnet['subnet_type_id']));
       $subnet['subnet_type_name'] = $sntype['display_name'];
+      $subnet['ip_addr_text'] = ip_mangle($subnet['ip_addr'], 'dotted');
+      $subnet['ip_mask_text'] = ip_mangle($subnet['ip_mask'], 'dotted');
+      $subnet['ip_mask_cidr'] = ip_mangle($subnet['ip_mask'], 'cidr');
 
       ksort($subnet);
       $text_array['subnets'][$i]=$subnet;
-      $text_array['subnets'][$i]['ip_addr_text'] = ip_mangle($subnet['ip_addr'], 'dotted');
-      $text_array['subnets'][$i]['ip_mask_text'] = ip_mangle($subnet['ip_mask'], 'dotted');
-      $text_array['subnets'][$i]['ip_mask_cidr'] = ip_mangle($subnet['ip_mask'], 'cidr');
 
       // cleanup some un-used junk
       unset($text_array['subnets'][$i]['network_role_id']);
@@ -183,6 +183,9 @@ function subnet_display($options="") {
     // Version - UPDATE on every edit!
     $version = '2.00';
 
+    $text_array = array();
+    $text_array['module_version'] = $version;
+
     // Return the usage summary if we need to
     if (!$options['subnet']) {
       // NOTE: Help message lines should not exceed 80 characters for proper display on a console
@@ -217,12 +220,6 @@ EOM
       return(array(2, $self['error']));
     }
 
-    // Gather sizing
-    list($percent,$total_used,$size) = get_subnet_usage($subnet['id']);
-    $subnet['total_allocated_percent'] = $percent;
-    $subnet['total_allocated'] = $total_used;
-    $subnet['total_available'] = $size;
-
     // get subnet type name
     list($status, $rows, $sntype) = ona_get_subnet_type_record(array('id' => $subnet['subnet_type_id']));
     $subnet['subnet_type_name'] = $sntype['display_name'];
@@ -232,26 +229,39 @@ EOM
     $subnet['ip_mask_text'] = ip_mangle($subnet['ip_mask'], 'dotted');
     $subnet['ip_mask_cidr'] = ip_mangle($subnet['ip_mask'], 'cidr');
 
-    // Tag records
-    list($status, $rows, $tags) = db_get_records($onadb, 'tags', array('type' => 'subnet', 'reference' => $subnet['id']));
-    if ($rows) {
-      foreach ($tags as $tag) {
-        $subnet['tags'][] = $tag['name'];
+    $options['verbose'] = sanitize_YN($options['verbose'], 'N');
+    if ($options['verbose'] == 'Y') {
+      // Tag records
+      list($status, $rows, $tags) = db_get_records($onadb, 'tags', array('type' => 'subnet', 'reference' => $subnet['id']));
+      if ($rows) {
+        foreach ($tags as $tag) {
+          $subnet['tags'][] = $tag['name'];
+        }
       }
-    }
 
-    // VLAN record
-    list($status, $rows, $vlan) = ona_get_vlan_record(array('id' => $subnet['vlan_id']));
-    if ($rows) {
-      $subnet['vlan'] = $vlan;
+      // VLAN record
+      list($status, $rows, $vlan) = ona_get_vlan_record(array('id' => $subnet['vlan_id']));
+      if ($rows) {
+        $subnet['vlan'] = $vlan;
+      }
+
+      // Gather sizing
+      list($percent,$total_used,$size) = get_subnet_usage($subnet['id']);
+      $subnet['total_allocated_percent'] = $percent;
+      $subnet['total_allocated'] = $total_used;
+      $subnet['total_available'] = $size;
+
     }
 
     // cleanup some un-used junk
     unset($subnet['network_role_id']);
     unset($subnet['vlan_id']);
 
+    ksort($subnet);
+    $text_array['subnets'][0] = $subnet;
+
     // Return the success notice
-    return(array(0, $subnet));
+    return(array(0, $text_array));
 }
 
 

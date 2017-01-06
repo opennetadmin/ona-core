@@ -36,7 +36,7 @@ class Subnets {
      // Process various method types
      switch ($request->getMethod()) {
        case 'GET':
-         $output = process_output(subnet_display($args));
+         $output = process_output(subnet_display($args+ (array)$request->getQueryParams()));
          break;
        case 'DELETE':
          $output = process_output(subnet_del($args));
