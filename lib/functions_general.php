@@ -1203,14 +1203,14 @@ function loggedIn() {
 // Returns true if the current user has access to the requested resource,
 // false if not.
 //////////////////////////////////////////////////////////////////////////////
-function auth($resource,$msg_level=1) {
+function auth($resource,$msg_level='notice') {
 
     if (!is_string($resource)) return false;
     if (array_key_exists($resource, (array)$_SESSION['ona']['auth']['perms'])) {
-        printmsg("DEBUG => auth() User[{$_SESSION['ona']['auth']['user']['username']}] has the {$resource} permission",5);
+        printmsg("User[{$_SESSION['ona']['auth']['user']['username']}] has the {$resource} permission",'debug');
         return true;
     }
-    printmsg("DEBUG => auth() User[{$_SESSION['ona']['auth']['user']['username']}] does not have the {$resource} permission",$msg_level);
+    printmsg("User[{$_SESSION['ona']['auth']['user']['username']}] does not have the {$resource} permission",$msg_level);
     return false;
 }
 
@@ -1224,16 +1224,12 @@ function auth($resource,$msg_level=1) {
 //////////////////////////////////////////////////////////////////////////////
 function authlvl($level) {
 
-    // FIXME: hack until we get auth stuff working:
-    printmsg("DEBUG => FIXME: authlvl() always returns true for now", 1);
-    return true;
-
     if (!is_numeric($level)) return false;
     if ($_SESSION['ona']['auth']['user']['level'] >= $level) {
-        printmsg("DEBUG => authlvl() {$_SESSION['ona']['auth']['user']['username']}'s level is >= {$level}",1);
+        printmsg("{$_SESSION['ona']['auth']['user']['username']}'s level is >= {$level}",'debug');
         return true;
     }
-    printmsg("DEBUG => authlvl() {$_SESSION['ona']['auth']['user']['username']}'s level is not >= {$level}",1);
+    printmsg("{$_SESSION['ona']['auth']['user']['username']}'s level is not >= {$level}",'debug');
     return false;
 }
 

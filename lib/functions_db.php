@@ -224,7 +224,7 @@ function db_insert_record($dbh=0, $table="", $insert="") {
     @$self['db_insert_record_count']++;
 
     // Debugging
-    printmsg("db_insert_record(\$dbh, $table, \$insert) called", 'info');
+    printmsg("db_insert_record(\$dbh, $table, \$insert) called", 'debug');
 
     // Return an error if insufficient input was received
     if ( (!$dbh) or (!$dbh->IsConnected()) or
@@ -323,7 +323,7 @@ function db_update_record($dbh=0, $table="", $where="", $insert="") {
     @$self['db_update_record_count']++;
 
     // Debugging
-    printmsg("db_update_record(\$dbh, $table, \$where, \$insert) called", 'info');
+    printmsg("db_update_record(\$dbh, $table, \$where, \$insert) called", 'debug');
 
     // Return an error if insufficient input was received
     if ( (!$dbh) or (!$dbh->IsConnected()) or
@@ -375,7 +375,7 @@ function db_update_record($dbh=0, $table="", $where="", $insert="") {
     $rs->Close();
 
     // Return Success
-    printmsg("Query updated {$rows} rows", 'info');
+    printmsg("Query updated {$rows} rows", 'debug');
     return(array(0, $rows));
 }
 
@@ -431,7 +431,7 @@ function db_delete_records($dbh=0, $table="", $where="") {
     @$self['db_delete_records_count']++;
 
     // Debugging
-    printmsg("db_delete_records(\$dbh, $table, \$where) called", 'info');
+    printmsg("db_delete_records(\$dbh, $table, \$where) called", 'debug');
 
     // Return an error if insufficient input was received
     if ( empty($dbh) or (!$dbh->IsConnected()) or
@@ -557,7 +557,7 @@ function db_get_record($dbh=0, $table="", $where="", $order="") {
     @$self['db_get_record_count']++;
 
     // Debugging
-    printmsg("db_get_record(\$dbh, \$where, $table, $order) called", 'info');
+    printmsg("db_get_record(\$dbh, \$where, $table, $order) called", 'debug');
 
     // Return an error if insufficient input was received
     if ( (!$dbh) or (!$dbh->IsConnected()) or
@@ -674,7 +674,7 @@ function db_get_record($dbh=0, $table="", $where="", $order="") {
     }
 
     // Return the row
-    printmsg("Returning record " . ($self['cache']["db_get_{$table}_record"]['row'] + 1) . " of " . $rows, 'info');
+    printmsg("Returning record " . ($self['cache']["db_get_{$table}_record"]['row'] + 1) . " of " . $rows, 'debug');
     $array = $rs->FetchRow();
     $rs->Close();
     return(array(0, $rows, $array));
@@ -740,7 +740,7 @@ function db_get_records($dbh=0, $table="", $where="", $order="", $rows=-1, $offs
     @$self['db_get_records_count']++;
 
     // Debugging
-    printmsg("db_get_records(\$dbh, \$where, $table, $order, $rows, $offset) called", 'info');
+    printmsg("db_get_records(\$dbh, \$where, $table, $order, $rows, $offset) called", 'debug');
 
     // Return an error if insufficient input was received
     if ( (!$dbh) or (!$dbh->IsConnected()) or
@@ -817,7 +817,7 @@ function db_get_records($dbh=0, $table="", $where="", $order="", $rows=-1, $offs
     }
 
     // Return the row
-    printmsg("Returning {$rows} records", 'info');
+    printmsg("Returning {$rows} records", 'debug');
     $rs->Close();
     return(array(0, $rows, $recordset));
 }
@@ -1230,9 +1230,6 @@ function ona_get_dns_server_domain_record($array) {
 function ona_get_next_id($tablename) {
     global $onadb, $self;
 
-    // Debugging
-    printmsg("DEBUG => ona_get_next_id() called", 3);
-
     // Find the sequence value for the specified tablename
     list($status, $rows, $record) = db_get_record($onadb, 'sequences', array('name' => $tablename));
 
@@ -1247,20 +1244,20 @@ function ona_get_next_id($tablename) {
         list($status, $rows) = db_update_record($onadb, 'sequences', array('name' => $tablename), array('seq' => $seq_inc));
 
         if ($status) {
-            $self['error'] = 'ERROR => ona_get_next_id() Unable to update sequence value!';
-            printmsg($self['error'], 4);
+            $self['error'] = 'Unable to update sequence value!';
+            printmsg($self['error'], 'error');
             return(0);
         }
 
         // If we got an ID, return it.
         if ($record['seq'] > 0) {
-            printmsg("DEBUG => ona_get_next_id() Returning ID: " . $record['seq'], 4);
+            printmsg("Returning ID: " . $record['seq'], 'debug');
             return($record['seq']);
         }
         // Just in case...
         else {
-            $self['error'] = 'ERROR => ona_get_next_id() Something went wrong!';
-            printmsg($self['error'], 4);
+            $self['error'] = 'Something went wrong!';
+            printmsg($self['error'], 'error');
             return(0);
         }
     }
@@ -1878,7 +1875,7 @@ function ona_find_subnet($search="") {
             list($status, $rows, $record) = ona_get_subnet_record("$field = $search");
             // If we got it, return it
             if ($status == 0 and $rows == 1) {
-                printmsg("Found subnet record by $field $search", 'info');
+                printmsg("Found subnet record by $field $search", 'debug');
                 return(array(0, $rows, $record));
             }
         }
@@ -1906,19 +1903,19 @@ function ona_find_subnet($search="") {
 
         // If we got it, return it
         if ($status == 0 and $rows == 1) {
-            printmsg("DEBUG => ona_find_subnet() found record by IP address", 2);
+            printmsg("Found record by IP address", 'debug');
             return(array(0, $rows, $record));
         }
 
         // Otherwise return an error
         if ($rows == 0) {
             $ip = ip_mangle($ip, 2);
-            $self['error'] = "NOTICE => IP supplied, $ip, does not belong to any existing subnet!";
-            printmsg($self['error'], 2);
+            $self['error'] = "IP supplied, $ip, does not belong to any existing subnet!";
+            printmsg($self['error'], 'info');
             return(array(3, $rows, array()));
         }
-        $self['error'] = "NOTICE => IP supplied, $ip, belongs to more than one subnet! Data corruption?";
-        printmsg($self['error'], 2);
+        $self['error'] = "IP supplied, $ip, belongs to more than one subnet! Data corruption?";
+        printmsg($self['error'], 'info');
         return(array(4, $rows, array()));
     }
 
@@ -1927,13 +1924,13 @@ function ona_find_subnet($search="") {
     list($status, $rows, $record) = ona_get_subnet_record(array('name' => strtoupper($search)));
     // If we got it, return it
     if ($status == 0 and $rows == 1) {
-        printmsg("DEBUG => ona_find_subnet() found subnet record by its name", 2);
+        printmsg("Found subnet record by its name", 'debug');
         return(array(0, $rows, $record));
     }
 
     // We didn't find it - return and error code, 0 matches, and an empty record.
-    $self['error'] = "NOTICE => couldn't find a unique subnet record with specified search criteria";
-    printmsg($self['error'], 2);
+    $self['error'] = "Couldn't find a unique subnet record with specified search criteria";
+    printmsg($self['error'], 'info');
     return(array(2, 0, array()));
 }
 
@@ -1976,7 +1973,7 @@ function ona_find_device($search="") {
         list($status, $rows, $record) = ona_get_device_record(array('id' => $search));
         // If we got it, return it
         if ($status == 0 and $rows == 1) {
-            printmsg("DEBUG => ona_find_device() found device record by id", 2);
+            printmsg("Found device record by id", 'debug');
             return(array(0, $rows, $record));
         }
     }
@@ -1992,25 +1989,25 @@ function ona_find_device($search="") {
 
         // If we got it, return it
         if ($status == 0 and $rows == 1) {
-            printmsg("DEBUG => ona_find_device() found record by IP address", 2);
+            printmsg("Found record by IP address", 'debug');
             return(array(0, $rows, $record));
         }
 
         // Otherwise return an error
         if ($rows == 0) {
             //$ip = ip_mangle($ip, 'dotted');
-            $self['error'] = "NOTICE => ona_find_device() was unable to locate the record by IP or fqdn";
-            printmsg($self['error'], 2);
+            $self['error'] = "Was unable to locate the record by IP or fqdn";
+            printmsg($self['error'], 'error');
             return(array(3, $rows, array()));
         }
-//        $self['error'] = "NOTICE => ona_find_device() found multiple matching records when searching by IP or fqdn. Data corruption?";
-//        printmsg($self['error'], 2);
+//        $self['error'] = "Found multiple matching records when searching by IP or fqdn. Data corruption?";
+//        printmsg($self['error'], 'error');
 //        return(array(4, $rows, array()));
 //    }
 
     // We didn't find it - return and error code, 0 matches, and an empty record.
-    $self['error'] = "NOTICE => ona_find_device() couldn't find a unique device record with specified search criteria";
-    printmsg($self['error'], 2);
+    $self['error'] = "Couldn't find a unique device record with specified search criteria";
+    printmsg($self['error'], 'warning');
     return(array(2, 0, array()));
 }
 
@@ -2126,7 +2123,7 @@ function ona_find_subnet_type($search="") {
 
     // Validate input
     if ($search == "") {
-        $self['error'] = "ERROR => No search string for subnet-type search";
+        $self['error'] = "No search string for subnet-type search";
         return(array(1, 0, array()));
     }
 
@@ -2136,7 +2133,7 @@ function ona_find_subnet_type($search="") {
         list($status, $rows, $record) = ona_get_subnet_type_record(array($field => $search));
         // If we got it, return it
         if ($status == 0 and $rows == 1) {
-            printmsg("DEBUG => ona_find_subnet_type() found device record by $field", 2);
+            printmsg("Found device record by $field", 'debug');
             return(array($status, $rows, $record));
         }
     }
@@ -2144,13 +2141,13 @@ function ona_find_subnet_type($search="") {
     // It's a string - do several sql queries and see if we can get a unique match
     list($status, $rows, $record) = ona_get_subnet_type_record(array('display_name' => $search));
     if ($status == 0 and $rows == 1) {
-        printmsg("DEBUG => ona_find_subnet_type() found subnet_type record by its name", 2);
+        printmsg("Found subnet_type record by its name", 'debug');
         return(array(0, $rows, $record));
     }
 
     list($status, $rows, $record) = ona_get_subnet_type_record(array('short_name' => $search));
     if ($status == 0 and $rows == 1) {
-        printmsg("DEBUG => ona_find_subnet_type() found subnet_type record by its name", 2);
+        printmsg("Found subnet_type record by its name", 'debug');
         return(array(0, $rows, $record));
     }
 

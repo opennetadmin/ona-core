@@ -17,7 +17,7 @@ $auth = '';
 function load_auth_class($authtype='') {
     global $base, $conf;
     // define a variable having the path to our auth classes
-    define('ONA_AUTH', $base.'/include/auth');
+    define('ONA_AUTH', $base.'/lib/auth');
 
     // use the system configured authtype if one was not passed in
     if (!$authtype) $authtype = $conf['authtype'];
@@ -53,38 +53,23 @@ function load_auth_class($authtype='') {
 }
 
 
-/**
- * Authenticates the username/password supplied against
- * the system configured auth type.
- *
- * 
- * @author  Matt Pascoe <matt@opennetadmin.com>
- * @return  int     1 or 0 indicating success or failure of auth
- * @return  string  A Javascript code containint status messages
- */
-function get_authentication($login_name='', $login_password='') {
-    global $base, $conf, $self, $onadb, $auth;
 
-    $js = "el('loginmsg').innerHTML = '<span style=\"color: green;\">Success!</span>'; setTimeout('removeElement(\'tt_loginform\')',1000);";
+/*
+* Authenticate the user and password combo.
+* will use the auth method that is configured (ie. ldap, local)
+* will get back a true/false as to success of user/pass auth
+*/
+function get_authentication($login_name, $login_password) {
+    global $self, $conf;
 
     // Validate the userid was passed and is "clean"
     if (!preg_match('/^[A-Za-z0-9.\-_]+$/', $login_name)) {
-        $js = "el('loginmsg').innerHTML = 'Bad username format';";
-        printmsg("ERROR => Login failure for {$login_name}: Bad username format", 0);
-        return(array(1, $js));
+        $self['error'] = "Login failure for {$login_name}: Bad username format";
+        printmsg($self['error'], 'error');
+        return(array(1, $self['error']));
     }
 
-
-    // Force guest logins to only use local auth module
-    if ($login_name == 'guest') {
-        printmsg("DEBUG => Guest user login, forcing local auth.",1);
-        // create new authentication class
-        $auth = load_auth_class('local');
-        $conf['authtype']='local';
-    } else {
-        // create new authentication class
-        $auth = load_auth_class();
-    }
+    $auth = load_auth_class();
 
     // Check user/pass authentication
     $authresult = $auth->checkPass($login_name,$login_password);
@@ -93,13 +78,13 @@ function get_authentication($login_name='', $login_password='') {
     if ($auth->founduser === false) {
         // Fall back to local database to see if we have something there
         if ($conf['authtype'] != 'local') {
-            printmsg("DEBUG => Unable to find user via auth_{$conf['authtype']}, falling back to local auth_local.",1);
+            printmsg("Unable to find user via auth_{$conf['authtype']}, falling back to local auth_local.",'info');
             $auth = load_auth_class('local');
             $authresult = $auth->checkPass($login_name,$login_password);
             if ($auth->founduser === false) {
-                $js = "el('loginmsg').innerHTML = 'Unknown user';";
-                printmsg("ERROR => Login failure for {$login_name}: Unknown user", 0);
-                return(array(1, $js));
+                $self['error'] = "Login failure for {$login_name}: Unknown user";
+                printmsg($self['error'], 'error');
+                return(array(false, $self['error']));
             }
             // override the system configured authtype for now
             $conf['authtype']='local';
@@ -108,15 +93,24 @@ function get_authentication($login_name='', $login_password='') {
 
     // If we do not get a positive authentication of user/pass then fail
     if ($authresult === false) {
-        $js = "el('loginmsg').innerHTML = 'Password incorrect';";
-        printmsg("ERROR => Login failure for {$login_name} using authtype {$conf['authtype']}: Password incorrect", 0);
-        return(array(1, $js));
+        $self['error'] = "Login failure for {$login_name} using authtype {$conf['authtype']}: Password incorrect";
+        printmsg($self['error'], 'error');
+        return(array(false, $self['error']));
     }
 
     // If the password is good.. return success.
-    printmsg("INFO => Authentication Successful for {$login_name} using authtype: {$conf['authtype']}", 1);
-    return(array(0, $js));
+    $self['error'] = "Authentication Successful for {$login_name} using authtype: {$conf['authtype']}";
+    printmsg($self['error'], 'notice');
+    return(array(true, $self['error']));
+
 }
+
+
+
+
+
+
+
 
 
 
@@ -130,30 +124,25 @@ function get_authentication($login_name='', $login_password='') {
  * @return  TRUE
  */
 function get_perms($login_name='') {
-    global $conf, $self, $onadb, $auth;
+    global $onadb;
 
-    // We'll be populating these arrays
-    $user = array();
-    $groups = array();
     $permissions = array();
 
-    printmsg("INFO => Authorization Starting for {$login_name}", 1);
+    printmsg("Authorization Starting for {$login_name}", 'debug');
 
-    // get user information and groups from the previously populated auth class
+    $auth = load_auth_class();
+
+    // get user information and groups
     $userinfo = $auth->getUserData($login_name);
-    if ($userinfo === false) printmsg("INFO => Failed to get user information for user: {$login_name}", 0);
+    if ($userinfo === false) printmsg("Failed to get user information for user: {$login_name}", 'error');
 
-    // If this is the local auth type, check local user permissions
-    // MP: This code should not be here but there is really not a better spot.
-    //if ($conf['authtype'] == 'local') {
-        // Load the users permissions based on their user_id.
-        // this is specific permissions for user, outside of group permissions
-        list($status, $rows, $records) = db_get_records($onadb, 'permission_assignments', array('user_id' => $userinfo['id']));
-        foreach ($records as $record) {
-            list($status, $rows, $perm) = db_get_record($onadb, 'permissions', array('id' => $record['perm_id']));
-            $permissions[$perm['name']] = $perm['id'];
-        }
-    //}
+    // Load the users permissions based on their user_id.
+    // this is specific permissions for user, outside of group permissions
+    list($status, $rows, $records) = db_get_records($onadb, 'permission_assignments', array('user_id' => $userinfo['id']));
+    foreach ($records as $record) {
+        list($status, $rows, $perm) = db_get_record($onadb, 'permissions', array('id' => $record['perm_id']));
+        $permissions[$perm['name']] = $perm['id'];
+    }
 
 
     // Load the users permissions based on their group ids
@@ -169,12 +158,13 @@ function get_perms($login_name='') {
     }
 
     // Save stuff in the session
-    unset($_SESSION['ona']['auth']);
+    $_SESSION['ona']['auth'] = '';
     $_SESSION['ona']['auth']['user']   = $userinfo;
     $_SESSION['ona']['auth']['perms']  = $permissions;
 
     // Log that the user logged in
-    printmsg("INFO => Loaded permissions for " . $login_name, 2);
+    printmsg("Loaded permissions for " . $login_name, 'debug');
+    #return (array(0,$_SESSION['ona']['auth']));
     return true;
 
 }

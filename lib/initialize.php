@@ -26,8 +26,8 @@ $conf_default = array (
     // For possible values see the $ona_contexts() array  in the database_settings.php file
     'default_context'        => 'DEFAULT',
 
-    // set a max session lifetime
-    'cookie_life'            => '172800',
+    // set a default token lifetime
+    'token_life'             => '3600',
 
     /* Settings for dcm.pl */
     'dcm_module_dir'         => "$base/modules",
@@ -41,6 +41,9 @@ $conf_default = array (
     // Sets the lowest level of logging per rfc 5424
     'log_level'              => 'NOTICE',
     'log_syslog_facility'    => 'local6',
+
+    // A string for signing our auth tokens.  You should set this in your local conf
+    'token_signing_key'      => 'CHANGEME!!',
 
     /* The output charset to be used in htmlentities() and htmlspecialchars() filtering */
     'charset'                => 'utf8',
@@ -186,16 +189,7 @@ foreach ($records as $record) {
     $conf[$record['name']] = $record['value'];
 }
 
-
-// Include functions that replace the default session handler with one that uses MySQL as a backend
-require_once('adodb_sessions.php');
-
 // Include the AUTH functions
 require_once('functions_auth.php');
 
-// Start the session handler (this calls a function defined in functions_general)
-startSession();
-
-// Set session inactivity threshold
-ini_set("session.gc_maxlifetime", $conf['cookie_life']);
 

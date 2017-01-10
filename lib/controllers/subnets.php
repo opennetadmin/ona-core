@@ -18,6 +18,7 @@ class Subnets {
          break;
        case 'POST':
          $output = process_output(subnet_add($request->getParsedBody()));
+         $response = $response->withStatus(201);
          break;
      }
 
@@ -74,6 +75,7 @@ class Subnets {
          break;
        case 'POST':
          $output = process_output(tag_add($args + (array)$request->getParsedBody()));
+         $response = $response->withStatus(201);
          break;
      }
 
@@ -104,6 +106,7 @@ class Subnets {
          break;
        case 'POST':
          $output = process_output(custom_attribute_add($args + (array)$request->getParsedBody()));
+         $response = $response->withStatus(201);
          break;
      }
 
