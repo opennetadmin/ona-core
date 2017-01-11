@@ -1,4 +1,5 @@
 FORMAT: 1A
+HOST: https://localhost/rest.php/v1
 
 # OpenNetAdmin API
   The ONA api info
@@ -11,6 +12,8 @@ This token must be passed in the `Authorization` header of each transaction.
 To obtain a token you must provide a username and password to the `/login` endpoint as described below.
 
 Tokens are subject to an expiration time as well as only being valid when coming from the same client ip that generated it.
+
+To secure your transaction you should configure SSL encryption.
 
 # Group Login
 

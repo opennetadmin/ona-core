@@ -127,7 +127,7 @@ $app->get('/', function ($request, $response) {
 * fresh lookup each time it is used to validate perms for that user.
 *
 */
-$app->post('/login', function ($request, $response) {
+$app->post('/v1/login', function ($request, $response) {
   global $conf;
 
   // Get the parameters sent in
