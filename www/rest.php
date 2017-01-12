@@ -20,7 +20,7 @@ class TokenAuth {
 
         $authorized = false;
         $response = $response->withStatus(403)
-                             ->withHeader('Content-type', 'application/json')
+                             ->withHeader('Content-type', 'application/json;charset=utf-8')
                              ->withHeader('X-Authenticated', 'False');
 
         // Get the token from the HTTP header
@@ -162,7 +162,7 @@ $app->post('/v1/login', function ($request, $response) {
   }
 
   $response = $response->write($self['error'])
-                       ->withHeader('Content-type', 'application/json');
+                       ->withHeader('Content-type', 'application/json;charset=utf-8');
   return $response;
 
 });
@@ -209,10 +209,10 @@ function process_output($output) {
   }
   $newoutput['status_code'] = $output[0];
 
-  // If there is no status message from the module, create a null place holder
+  // If there is no status message from the module, create an empty place holder
   // The assumption here is that if you dont set a message then there was not a useful one to provide.
   // this may or may not imply that the status code is 0.. maybe we test for that?
-  if (!isset($newoutput['status_msg'])) $newoutput['status_msg'] = null;
+  if (!isset($newoutput['status_msg'])) $newoutput['status_msg'] = '';
 
   ksort($newoutput);
 

@@ -26,15 +26,15 @@ Use the token field from the resulting json for Authentication.
     + user: `admin` - The username to authenticate
     + pass: `admin` - The password for authentication
 
-+ Response 200 (application/json)
++ Response 200 (application/json;charset=utf-8)
 
         {"status_code": 0, "status_msg": "Token generation successful", "token": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJsb2NhbGhvc3QtMTAuMC4yLjE1IiwiYXVkIjoiMTAuMC4ylJiIlcjPYXQiOjE0ODQwNzMwNzMsIm5iZiI6MTQ4NDA3MzA3OCwiZXhwIjoxNDg0MDc2NjczLCJ1c2VybmFtZSI6ImFkbWluIn0.GjABq8Jhi6LY4fDs7ygMVnJVcF1gCdx8PH5uz6pvrqc" }
 
-+ Response 401 (application/json)
++ Response 401 (application/json;charset=utf-8)
 
         {"status_code": 1, "status_msg": "Authentication token not sent" }
 
-+ Response 403 (application/json)
++ Response 403 (application/json;charset=utf-8)
 
         {"status_code": 1, "status_msg": "Token Issue: some sort of error" }
 
@@ -55,8 +55,12 @@ List all subnets in ONA. Optionally provide search parameters to narrow the retu
   + catype: `nmap_scan` (optional) - Subnet with a custom attribute type matching string.
   + cavalue: `Y` (optional) - Subnet with a custom attribute value matching string.
 
-+ Response 200 (application/json)
-  + Attributes (Subnet)
++ Response 200 (application/json;charset=utf-8)
+  + Attributes (Subnets)
+
++ Response 403 (application/json;charset=utf-8)
+
+        {"status_code": 1, "status_msg": "Token Issue: some sort of error" }
 
 ### Create a new subnet [POST]
 
@@ -65,8 +69,12 @@ Creates a new subnet
 + Request (application/json)
   + Attributes (Subnet Add)
 
-+ Response 201 (application/json)
-  + Attributes (Subnet)
++ Response 201 (application/json;charset=utf-8)
+  + Attributes (Subnets)
+
++ Response 403 (application/json;charset=utf-8)
+
+        {"status_code": 1, "status_msg": "Token Issue: some sort of error" }
 
 ## Subnet [/subnets/{subnet}{?verbose}]
 Perform operations on a specific subnet
@@ -78,8 +86,12 @@ Return information about a single subnet.  Optionally get a verbose output of in
   + subnet: `192.168.0.0` - Name or IP of a subnet.
   + verbose: `Y` (optional) - Display more detailed information about the subnet.
 
-+ Response 200 (application/json)
-  + Attributes (Subnet)
++ Response 200 (application/json;charset=utf-8)
+  + Attributes (Subnets)
+
++ Response 403 (application/json;charset=utf-8)
+
+        {"status_code": 1, "status_msg": "Token Issue: some sort of error" }
 
 # Data Structures
 
@@ -87,18 +99,20 @@ Return information about a single subnet.  Optionally get a verbose output of in
   + status_code: `0` (number) - Status code from module
   + status_msg: `Successfully did the thing you asked` (string) - A human readable status message
 
-## `Subnet` (object)
+## `Subnets` (object)
   + include Status
-  + subnets
-    + id: `22` (number) - Database unique ID
-    + ip_addr: `3232235520` (number) - Numeric representation of an IPv4 or IPv6 address
-    + ip_addr_text: `192.168.0.0` (string) - IPv4 or IPv6 address in a dotted notation
-    + ip_mask: `4294967040` (string) - Numeric representation of a network mask
-    + ip_mask_cidr: `24` (number) - CIDR value for mask
-    + ip_mask_text: `255.255.255.0` (string) - Dotted representation of network mask
-    + name: `LAN-EXAMPLE` (string) - Name of the subnet
-    + subnet_type_id: `13` (string) - Database uniqui ID for the subnet type
-    + subnet_type_name: `LAN` (string) - Name of the subnets type
+  + subnets (array[Subnet])
+
+## `Subnet` (object)
+  + id: `22` (string) - Database unique ID
+  + ip_addr: `3232235520` (string) - Numeric representation of an IPv4 or IPv6 address
+  + ip_addr_text: `192.168.0.0` (string) - IPv4 or IPv6 address in a dotted notation
+  + ip_mask: `4294967040` (string) - Numeric representation of a network mask
+  + ip_mask_cidr: `24` (string) - CIDR value for mask
+  + ip_mask_text: `255.255.255.0` (string) - Dotted representation of network mask
+  + name: `LAN-EXAMPLE` (string) - Name of the subnet
+  + subnet_type_id: `13` (string) - Database uniqui ID for the subnet type
+  + subnet_type_name: `LAN` (string) - Name of the subnets type
 
 ## `Subnet Add` (object)
   + name: `LAN-EXAMPLE` (string) - Name of the subnet
