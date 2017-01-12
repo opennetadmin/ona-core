@@ -72,6 +72,7 @@ $slimconfig = [
 @include("{$base}/etc/config.php");
 
 // merge our two config arrays
+// NOTE: below we layer in the conf values from sys_config table
 $conf = array_merge($conf_default, $conf);
 
 
@@ -87,9 +88,9 @@ if (file_exists($base.'/VERSION')) { $conf['version'] = trim(file_get_contents($
 // I've tried to define the entries that are commonly used:
 $self = array (
     // Error messages will often get stored in here
-    "error"                  => "",
+    'error'                  => '',
     // All sorts of things get cached in here to speed things up
-    "cache"                  => array(),
+    'cache'                  => array(),
 );
 
 
@@ -101,12 +102,13 @@ require_once('functions_general.php');
 // Include the basic database functions
 require_once('functions_db.php');
 
+// Include the AUTH functions
+require_once('auth/functions_auth.php');
 
 
 
 
-
-
+###### set up logging
 
 use Monolog\Logger;
 use Monolog\Handler\StreamHandler;
@@ -131,6 +133,23 @@ if ($conf['log_to_syslog']) {
 
 
 
+
+
+
+
+#### Do I need this check for mb_string if I'm using composer to do install?
+
+// Set multibyte encoding to UTF-8
+if (@function_exists('mb_internal_encoding')) {
+    mb_internal_encoding("UTF-8");
+} else {
+    printmsg("Missing 'mb_internal_encoding' function. Please install PHP 'mbstring' functions for proper UTF-8 encoding.", 'notice');
+}
+
+
+
+
+##### Connect to the database and load extra config variables from sys_config
 
 
 // Include the localized Database settings
@@ -162,23 +181,11 @@ if (file_exists($base.'/local/config/run_install') or @$runinstaller or @$instal
 }
 */
 
-
-
-
-
-
-// Set multibyte encoding to UTF-8
-if (@function_exists('mb_internal_encoding')) {
-    mb_internal_encoding("UTF-8");
-} else {
-    printmsg("Missing 'mb_internal_encoding' function. Please install PHP 'mbstring' functions for proper UTF-8 encoding.", 'notice');
-}
-
 // If we dont have a ona_context set in the cookie, lets set a cookie with the default context
 if (!isset($_COOKIE['ona_context_name'])) { $_COOKIE['ona_context_name'] = $conf['default_context']; setcookie("ona_context_name", $conf['default_context']); }
 
 // (Re)Connect to the DB now.
-global $onadb;
+#global $onadb;
 $onadb = db_pconnect('', $_COOKIE['ona_context_name']);
 
 // Load the actual user config from the database table sys_config
@@ -189,7 +196,5 @@ foreach ($records as $record) {
     $conf[$record['name']] = $record['value'];
 }
 
-// Include the AUTH functions
-require_once('functions_auth.php');
 
 
