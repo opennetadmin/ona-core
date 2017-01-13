@@ -4,13 +4,23 @@
 
 <!-- This file populates default data to a brand new OpenNetAdmin install only -->
 
-<query>INSERT INTO `configuration_types` VALUES (1,'IOS_CONFIG'),(2,'IOS_VERSION'),(3,'NS_CONFIG'),(4,'NS_VERSION'),(5,'UCS_CONFIG'),(6,'UCS_VERSION');</query>
+<query>
+INSERT INTO `configuration_types` VALUES
+(1,'IOS_CONFIG'),
+(2,'IOS_VERSION'),
+(3,'NS_CONFIG'),
+(4,'NS_VERSION'),
+(5,'UCS_CONFIG'),
+(6,'UCS_VERSION');
+</query>
 
-<query>INSERT INTO `custom_attribute_types` VALUES
+<query>
+INSERT INTO `custom_attribute_types` VALUES
 (1,'nmap_scan','Used to determine if this subnet should be scanned by Nmap based tools.','/^[Y|N]$/','Must be either Y or N');
 </query>
 
-<query>INSERT INTO `dcm_module_list` VALUES
+<query>
+INSERT INTO `dcm_module_list` VALUES
 ('add_permission', 'Add new security permission', 'permissions.inc.php'),
 ('domain_display','Displays an existing domain','ona/domain.inc.php'),
 ('get_module_list','Returns the list of available modules','get_module_list.inc.php'),
@@ -83,36 +93,142 @@
 ('report_run', 'Run a report', 'report_run.inc.php'),
 ('tag_add', 'Add a tag to an object', 'ona/tag.inc.php'),
 ('tag_del', 'Delete a tag from an object', 'ona/tag.inc.php'),
-('ona_sql', 'Perform basic SQL operations on the database', 'sql.inc.php');</query>
+('ona_sql', 'Perform basic SQL operations on the database', 'sql.inc.php');
+</query>
 
-<query>INSERT INTO `device_types` VALUES (1,1,1),(2,9,11),(3,2,13),(4,4,2),(5,5,3),(6,9,12);</query>
+<query>
+INSERT INTO `device_types` VALUES
+(1,1,1),
+(2,9,11),
+(3,2,13),
+(4,4,2),
+(5,5,3),
+(6,9,12);
+</query>
 
-<query>INSERT INTO `dhcp_options` VALUES (1,'subnet-mask',1,'I','Subnet Mask',1),(2,'routers',3,'L','Default Gateway',1),(3,'domain-name-servers',6,'L','DNS Name Servers',1),(4,'domain-name',15,'S','Default domain',1),(5,'host-name',12,'S','Host Name',1),(6,'vendor-encapsulated-options',43,'S','Vendor Ecapsulated Options',1),(7,'netbios-name-servers',44,'L','Netbios Name Servers',1),(8,'netbios-node-type',46,'N','Netbios Node Type',1),(9,'netbios-scope',47,'S','Netbios Scope',1),(10,'vendor-class-identifier',60,'S','Vendor Class Identifier',1),(11,'tftp-server-name',66,'S','TFTP Server Name',1),(12,'bootfile-name',67,'S','Bootfile Name',1);</query>
+<query>
+INSERT INTO `dhcp_options` VALUES
+(1,'subnet-mask',1,'I','Subnet Mask',1),
+(2,'routers',3,'L','Default Gateway',1),
+(3,'domain-name-servers',6,'L','DNS Name Servers',1),
+(4,'domain-name',15,'S','Default domain',1),
+(5,'host-name',12,'S','Host Name',1),
+(6,'vendor-encapsulated-options',43,'S','Vendor Ecapsulated Options',1),
+(7,'netbios-name-servers',44,'L','Netbios Name Servers',1),
+(8,'netbios-node-type',46,'N','Netbios Node Type',1),
+(9,'netbios-scope',47,'S','Netbios Scope',1),
+(10,'vendor-class-identifier',60,'S','Vendor Class Identifier',1),
+(11,'tftp-server-name',66,'S','TFTP Server Name',1),
+(12,'bootfile-name',67,'S','Bootfile Name',1);
+</query>
 
-<query>INSERT INTO dns_views (id, name, description) VALUES ( '0', 'DEFAULT', 'Default view for dns records')</query>
+<query>
+INSERT INTO dns_views (id, name, description) VALUES
+( '0', 'DEFAULT', 'Default view for dns records')
+</query>
 
-<query>INSERT INTO `manufacturers` VALUES (7,'Adtran'),(8,'Allied Telesyn'),(9,'Cabletron'),(1,'Cisco'),(5,'Dell'),(10,'Extreme Networks'),(4,'Hewlett Packard'),(6,'IBM'),(2,'Juniper'),(3,'Unknown');</query>
-
-
-<query>INSERT INTO `models` VALUES (1,1,'2821',''),(2,4,'dv9000t',''),(3,4,'4000m',''),(4,4,'8000m',''),(5,4,'LJ5000',''),(6,1,'2948G-L3',''),(7,5,'Optiplex GS560',''),(8,9,'24TXM-GLS',''),(9,3,'Unknown',''),(10,6,'Netfinity 2232','');</query>
-
-
-<query>INSERT INTO `roles` VALUES (12,'Bulk loaded'),(13,'laptop'),(11,'Manually loaded'),(3,'printer'),(1,'router'),(4,'server'),(2,'switch'),(7,'wireless access point'),(5,'workstation');</query>
-
-
-<query>INSERT INTO `sequences` VALUES ('blocks',4),('configurations',1),('configuration_types',5),('custom_attribute_types',3),('devices',14),('device_types',7),('dhcp_options',14),('dhcp_option_entries',13),('dhcp_pools',3),('dhcp_server_subnets',6),('dns',62),('dns_server_domains',8),('domains',5),('hosts',22),('interfaces',28),('manufacturers',47),('models',11),('roles',14),('subnets',22),('subnet_types',14),('vlans',1),('vlan_campuses',5),('locations',1),('permissions',100),('tags',1);</query>
-
-
-<query>INSERT INTO `subnet_types` VALUES (1,'loopback','Loopback','Loopback Interfaces (mostly for routers)'),(2,'','WAN',''),(7,'','VLAN',''),(10,'p2p','Point-to-Point',''),(11,'','VPN',''),(12,'','Wireless LAN',''),(13,'lan','LAN','Simple LAN');</query>
-
-
-<query>INSERT INTO `groups` VALUES (17,'Default','Default user group',1),(18,'Admin','Admin group',99);</query>
-
-
-<query>INSERT INTO `group_assignments` VALUES (1,17,1),(2,18,2);</query>
+<query>
+INSERT INTO `manufacturers` VALUES
+(7,'Adtran'),
+(8,'Allied Telesyn'),
+(9,'Cabletron'),
+(1,'Cisco'),
+(5,'Dell'),
+(10,'Extreme Networks'),
+(4,'Hewlett Packard'),
+(6,'IBM'),
+(2,'Juniper'),
+(3,'Unknown');
+</query>
 
 
-<query>INSERT INTO `sys_config` (`name`, `value`, `description`, `field_validation_rule`, `failed_rule_text`, `editable`, `deleteable`) VALUES
+<query>
+INSERT INTO `models` VALUES
+(1,1,'2821',''),
+(2,4,'dv9000t',''),
+(3,4,'4000m',''),
+(4,4,'8000m',''),
+(5,4,'LJ5000',''),
+(6,1,'2948G-L3',''),
+(7,5,'Optiplex GS560',''),
+(8,9,'24TXM-GLS',''),
+(9,3,'Unknown',''),
+(10,6,'Netfinity 2232','');
+</query>
+
+
+<query>
+INSERT INTO `roles` VALUES
+(12,'Bulk loaded'),
+(13,'laptop'),
+(11,'Manually loaded'),
+(3,'printer'),
+(1,'router'),
+(4,'server'),
+(2,'switch'),
+(7,'wireless access point'),
+(5,'workstation');
+</query>
+
+
+<query>
+INSERT INTO `sequences` VALUES
+('blocks',4),
+('configurations',1),
+('configuration_types',5),
+('custom_attribute_types',3),
+('devices',14),
+('device_types',7),
+('dhcp_options',14),
+('dhcp_option_entries',13),
+('dhcp_pools',3),
+('dhcp_server_subnets',6),
+('dns',62),
+('dns_server_domains',8),
+('domains',5),
+('hosts',22),
+('interfaces',28),
+('manufacturers',47),
+('models',11),
+('roles',14),
+('subnets',22),
+('subnet_types',14),
+('vlans',1),
+('vlan_campuses',5),
+('locations',1),
+('permissions',100),
+('tags',1);
+</query>
+
+
+<query>
+INSERT INTO `subnet_types` VALUES
+(1,'loopback','Loopback','Loopback Interfaces (mostly for routers)'),
+(2,'','WAN',''),
+(7,'','VLAN',''),
+(10,'p2p','Point-to-Point',''),
+(11,'','VPN',''),
+(12,'','Wireless LAN',''),
+(13,'lan','LAN','Simple LAN');
+</query>
+
+
+<query>
+INSERT INTO `groups` VALUES
+(17,'Default','Default user group',1),
+(18,'Admin','Admin group',99);
+</query>
+
+
+<query>
+INSERT INTO `group_assignments` VALUES
+(1,17,1),
+(2,18,2);
+</query>
+
+
+<query>
+INSERT INTO `sys_config` (`name`, `value`, `description`, `field_validation_rule`, `failed_rule_text`, `editable`, `deleteable`) VALUES
 ('authtype', 'local', 'Define standard authentication module to use', '', '', 1, 0),
 ('cookie_life', '172800', 'Sets the length of the session cookie.  It is in seconds', '', '', 1, 0),
 ('date_format', 'M jS, g:ia', 'PHP text format for date values', '', '', 1, 0),
@@ -134,13 +250,19 @@
 ('suggest_max_results', '10', 'Limits the amount of rows returned by queries. (test impact of changing this first)', '', '', 1, 0),
 ('syslog', '0', 'Log via syslog, only works if debug is set to 0', '', '', 0, 0),
 ('version', 'not-set', 'Tracks current installed version, used to detect when upgrades should be done.', '', '', 0, 0),
-('upgrade_index', '13', 'Tracks current upgrade index, used to perform database upgrades.', '', '', 0, 0);</query>
+('upgrade_index', '13', 'Tracks current upgrade index, used to perform database upgrades.', '', '', 0, 0);
+</query>
 
 
-<query>INSERT INTO `users` VALUES (1,'guest','098f6bcd4621d373cade4e832627b4f6',0,'2007-10-30 02:55:37','2007-12-02 23:44:21'),(2,'admin','21232f297a57a5a743894a0e4a801fc3',0,'2007-10-30 03:00:17','2007-12-02 22:10:26');</query>
+<query>
+INSERT INTO `users` VALUES
+(1,'guest','098f6bcd4621d373cade4e832627b4f6',0,'2007-10-30 02:55:37','2007-12-02 23:44:21'),
+(2,'admin','21232f297a57a5a743894a0e4a801fc3',0,'2007-10-30 03:00:17','2007-12-02 22:10:26');
+</query>
 
 
-<query>INSERT INTO `permissions` VALUES
+<query>
+INSERT INTO `permissions` VALUES
 (1,'dns_record_add','Add a DNS record'),
 (2,'dns_record_modify','Modify a DNS record'),
 (3,'dns_record_del','Delete a DNS record'),
@@ -164,11 +286,13 @@
 ( '100021', 'ona_sql', 'Perform SQL operations on the ONA tables'),
 ( '100022', 'custom_attribute_add', 'Add custom attribute'),
 ( '100023', 'custom_attribute_del', 'Delete custom attribute'),
-( '100024', 'custom_attribute_modify', 'Modify custom attribute');</query>
+( '100024', 'custom_attribute_modify', 'Modify custom attribute');
+</query>
 
 
 
-<query>INSERT INTO `permission_assignments` VALUES 
+<query>
+INSERT INTO `permission_assignments` VALUES 
 (1,1,0,18),
 (2,2,0,18),
 (3,3,0,18),
@@ -192,7 +316,8 @@
 ('100003', '100021', '0', 18),
 ('100004', '100022', '0', 18),
 ('100005', '100023', '0', 18),
-('100006', '100024', '0', 18);</query>
+('100006', '100024', '0', 18);
+</query>
 
 </sql>
 </schema>
