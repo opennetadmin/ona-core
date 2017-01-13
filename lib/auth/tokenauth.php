@@ -87,16 +87,17 @@ class tokenauth {
             return $response;
         }
 
+              // Get the user name etc from the JWT token and then look up perms
+              $username = $newtoken->getClaim('username');
+
         // First check that token audience is the same as the client it comes from
         // Validate the token is signed and ok, if so continue with authentication/authorization
-        if ($newtoken->getClaim('aud') == $_SERVER['REMOTE_ADDR'] ) {
+        if ($newtoken->getClaim('aud') == "{$username}-{$_SERVER['REMOTE_ADDR']}" ) {
           if ($newtoken->verify($signer, $conf['token_signing_key'])) {
             if ($newtoken->validate($data)) {
               $authorized = true;
               $response = $response->withStatus(200)
                                    ->withHeader('X-Authenticated', 'True');
-              // Get the user name etc from the JWT token and then look up perms
-              $username = $newtoken->getClaim('username');
               // Get permissions from ONA tables
               get_perms($username);
               printmsg("Token validated for user: $username", 'info');
