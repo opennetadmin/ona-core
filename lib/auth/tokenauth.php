@@ -124,24 +124,25 @@ class buildtoken {
   public function __construct($user,$noexpire) {
     global $conf;
 
+    // should be unique enough for our purposes.
+    $jti=uniqid();
+
     // Sign token with hmac
     $signer = new Sha256();
     $this->token = (new Builder())->setIssuer($_SERVER['SERVER_NAME'].'-'.$_SERVER['SERVER_ADDR'])
-                            // Configures the audience (aud claim)
                             // Using client IP address to be validated during use
-                            ->setAudience($_SERVER['REMOTE_ADDR'])
-                            // Not setting jti for now, could use to revoke if needed
-  #                          ->setId('4f1g23a12aa', true) // the id (jti claim)
+                            ->setAudience($user.'-'.$_SERVER['REMOTE_ADDR']) // (aud claim)
+                            ->setId($jti , true) // the id (jti claim) to revoke if needed
                             ->setIssuedAt(time()) // time that the token was issue (iat claim)
-                            ->setNotBefore(time() + 5) // time that the token can be used (nbf claim)
+                            ->setNotBefore(time()) // time that the token can be used (nbf claim)
                             ->setExpiration(time() + 3600) // expiration time of the token (nbf claim)
-                            ->set('username', $user)
+                            ->set('username', $user) // Set username for later lookup
                             ->sign($signer, $conf['token_signing_key'])
                             ->getToken();
   }
 
 
-
+  // Send the token back to the login endpoint
   public function __toString() {
     return "$this->token";
   }
