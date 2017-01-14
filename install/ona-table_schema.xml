@@ -946,8 +946,10 @@
     <field name="password" type="C" size="64">
       <NOTNULL/>
     </field>
-    <field name="type" type="C" size="15">
+    <field name="token_expire" type="L" size="1">
       <NOTNULL/>
+      <DEFAULT value="1"/>
+      <UNSIGNED/>
     </field>
     <field name="level" type="I" size="4">
       <NOTNULL/>
@@ -966,6 +968,20 @@
     </index>
   </table>
 
+  <table name="jwt_perm_tokens">
+   <opt platform="mysql">ENGINE=INNODB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci</opt>
+    <field name="jti" type="C" size="32">
+      <NOTNULL/>
+    </field>
+    <field name="aud" type="C" size="64">
+      <NOTNULL/>
+    </field>
+    <field name="enabled" type="L" size="1">
+      <NOTNULL/>
+      <DEFAULT value="1"/>
+      <UNSIGNED/>
+    </field>
+  </table>
 
   <table name="vlan_campuses">
    <opt platform="mysql">ENGINE=INNODB DEFAULT CHARSET=utf8 DEFAULT COLLATE=utf8_general_ci</opt>
@@ -1023,18 +1039,6 @@ rebuild_flag             INTEGER NOT NULL,
 ); 
       </query>
   </sql>
-
-
-
-
-  <!-- Get rid of old tables that are no longer used -->
-  <table name="defaults">
-      <DROP/> 
-  </table>
-  <table name="contexts">
-      <DROP/> 
-  </table>
-
 
 
 

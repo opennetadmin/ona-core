@@ -26,8 +26,8 @@ $conf_default = array (
     // For possible values see the $ona_contexts() array  in the database_settings.php file
     'default_context'        => 'DEFAULT',
 
-    // set a default token lifetime
-    'token_life'             => '3600',
+    // set a default token lifetime to 8 hours (a work day)
+    'token_expire_time'      => '28800',
 
     /* Settings for dcm.pl */
     'dcm_module_dir'         => "$base/modules",
