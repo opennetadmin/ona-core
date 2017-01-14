@@ -2,7 +2,7 @@
 <?php
 
 // Load our initialization library
-@require_once(__DIR__.'/../lib/initialize.php');
+require_once(__DIR__.'/../lib/initialize.php');
 
 require_once(__DIR__.'/../vendor/adodb/adodb-php/adodb-xmlschema03.inc.php');
 
@@ -16,9 +16,9 @@ $new_ver = trim(@file_get_contents($base.'/VERSION'));
 $curr_ver = '';
 
 # junk output from included functions
-$stdout = '';
-$syslog = '';
-$log_to_db = '';
+#$stdout = '';
+#$syslog = '';
+#$log_to_db = '';
 
 $install_complete=1;
 
@@ -36,13 +36,9 @@ if (!@file_exists($dbconffile)) {
 
     // License info
     echo "ONA is licensed under GPL v2.0.\n";
-#    $showlicense = promptUser("Would you like to view license? [y/N] ", 'n');
-#    if ($showlicense == 'y') { system("more -80 {$base}/../docs/LICENSE"); }
+    $showlicense = promptUser("Would you like to view license? [y/N] ", 'n');
+    if ($showlicense == 'y') { system("more -80 {$base}/../docs/LICENSE"); }
     // TODO: Do you agree to the license
-
-    #while(empty($name)){
-    #  $name = promptUser(" Enter server name");
-    #}
 
     check_requirements();
 
@@ -55,9 +51,6 @@ if (!@file_exists($dbconffile)) {
 
 } else {
   upgrade();
-  #echo "\nFound existing database config file: $dbconffile \n";
-  #echo "Nothing to do.\n";
-  #echo "\nDONE..\n";
   exit;
 }
 
@@ -111,10 +104,7 @@ function upgrade() {
     global $text,$new_ver,$xmlfile_data,$xmlfile_tables,$dbconffile,$status,$base;
 
 
-    $upgrademain = '';
-
-
-    // Get the existing database config (again) so we can connect using its settings
+    // Get the existing database config so we can connect using its settings
     include($dbconffile);
 
     $context_count = count($ona_contexts);
@@ -129,8 +119,8 @@ We have found {$context_count} context(s) in your current db configuration file.
 
 ";
 
-printf("%-20s %-10s %-20s %-20s %-20s %-5s\n", 'Context Name', 'DB type', 'Server', 'DB name', 'Version', 'Upgrade Index');
-echo "--------------------------------------------------------------------------------------------------------------\n";
+    printf("%-20s %-10s %-20s %-20s %-20s %-5s\n", 'Context Name', 'DB type', 'Server', 'DB name', 'Upgrade Index', 'Version');
+    echo "--------------------------------------------------------------------------------------------------------------\n";
 
 
     // Loop through each context and identify the Databases within
@@ -152,13 +142,13 @@ echo "--------------------------------------------------------------------------
                     $array = $rs->FetchRow();
                     $curr_ver = $array['value'];
 
+                    if ($curr_ver == $new_ver) { $curr_ver = "$curr_ver (no changes will be done)"; }
+
                     $rs = $db->Execute("SELECT value FROM sys_config WHERE name like 'upgrade_index'");
                     $array = $rs->FetchRow();
                     $upgrade_index = $array['value'];
 
                     $levelinfo = $upgrade_index;
-
-                    if ($curr_ver == '') { $curr_ver = 'PRE-v08.02.18'; }
                 } else {
                     $status++;
                     $err_txt .= "[{$cname}] Failed to select DB '{$cdbs['db_database']}'\n\n".$db->ErrorMsg()."\n";
@@ -168,7 +158,7 @@ echo "--------------------------------------------------------------------------
             $db->Close();
 
 
-            printf("%-20s %-10s %-20s %-20s %-20s %-5s\n", $cname, $cdbs['db_type'], $cdbs['db_host'], $cdbs['db_database'], $curr_ver, $levelinfo);
+            printf("%-20s %-10s %-20s %-20s %-20s %-5s\n", $cname, $cdbs['db_type'], $cdbs['db_host'], $cdbs['db_database'], $levelinfo, $curr_ver);
         }
 
     }
@@ -192,63 +182,31 @@ EOL;
 // TODO this needs to just start over the process??
     }
 
-/////} This is the end of our if for if dbconf file exists
 
 
 
 
 
-$upgrade_submit = sanitize_YN($upgrade_submit);
-// If they have selected to keep the tables then remove the run_install file
-if ($upgrade_submit == 'N') {
-  exit;
-} else {
+    $upgrade_submit = sanitize_YN($upgrade_submit);
+    // If they have selected to keep the tables then remove the run_install file
+    if ($upgrade_submit == 'N') {
+      exit;
+    } else {
 
-    echo "\nPlease provide admin credentials to make database updates.";
+      echo "\nPlease provide admin credentials to make database updates.\n";
 
-    $admin_login = promptUser("Database admin? ", 'root');
-    $admin_passwd = promptUser("Database admin password? ", '');
-/*
-    // Gather info
-    $dbtype = 'mysqli'; $adotype = $dbtype; // TODO: offer more options here someday
-    $database_host = promptUser("Database host? ", 'localhost');
-    $sys_login = promptUser("Application Database user name? ", 'ona_sys');
-    $sys_passwd = promptUser("Application Database user password? ", 'changeme');
-    $database_name = promptUser("Database name? ona_", 'default');
-    $default_domain = promptUser("Default DNS domain? ", 'example.com');
-
-$ona_contexts=array (
-  'DEFAULT' =>
-  array (
-    'databases' =>
-    array (
-      0 =>
-      array (
-        'db_type' => 'mysqli',
-        'db_host' => 'localhost',
-        'db_login' => 'ona_sys',
-        'db_passwd' => 'changeme',
-        'db_database' => 'ona_default',
-        'db_debug' => false,
-      ),
-    ),
-    'description' => 'Default data context',
-    'context_color' => '#D3DBFF',
-  ),
-);
-*/
+      $admin_login = promptUser("Database admin? ", 'root');
+      $admin_passwd = promptUser("Database admin password? ", '');
 
 
-
-    // Loop through each context and upgrade the Databases within
-    foreach(array_keys($ona_contexts) as $cname) {
+      // Loop through each context and upgrade the Databases within
+      foreach(array_keys($ona_contexts) as $cname) {
 
         foreach($ona_contexts[$cname]['databases'] as $cdbs) {
             printmsg("[{$cname}/{$cdbs['db_host']}] Performing an upgrade.",'notice');
 
             // switch from mysqlt to mysql becuase of adodb problems with innodb and opt stuff when doing xml
             $adotype = $cdbs['db_type'];
-            //if ($adotype == 'mysqlt') $adotype = 'mysql';
 
             // Make an initial connection to a DB server without specifying a database
             $db = ADONewConnection($adotype);
@@ -272,6 +230,7 @@ $ona_contexts=array (
                     // update existing tables in our database to match our baseline xml schema
                     // create a schema object and build the query array.
                     $schema = new adoSchema( $db );
+                    $schema->executeInline( FALSE );
                     // Build the SQL array from the schema XML file
                     $sql = $schema->ParseSchema($xmlfile_tables);
                     // Execute the SQL on the database
@@ -364,10 +323,10 @@ $ona_contexts=array (
 
         }
 
-    }
+      } // End loop contexts
 
 
-    if($status == 0) {
+      if($status == 0) {
         $text .= $script_text;
 
         if (@file_exists($runinstall)) {
@@ -376,11 +335,11 @@ $ona_contexts=array (
             $text .= "Please remove '{$runinstall}' manually.\n";
           }
         }
-    } else {
+      } else {
         $text .= "There was a fatal error. Upgrade may be incomplete. Fix the issue and try again\n";
-    }
+      }
 
-}
+  } // End of if upgrade_submit Y option
 
 echo $text;
 
@@ -433,7 +392,7 @@ function new_install() {
         $text .= "Connected to '{$database_host}' as '{$admin_login}'.\n";
 
         // Drop out any existing database and user
-        if (@$db->Execute("DROP DATABASE IF EXISTS {$database_name}")) {
+        if ($db->Execute("DROP DATABASE IF EXISTS {$database_name}")) {
             //@$db->Execute("DROP USER IF EXISTS '{$sys_login}'@'%'");
             $text .= "Dropped existing instance of '{$database_name}'.\n";
             printmsg("Dropped existing DB: $database_name",'notice');
@@ -471,6 +430,8 @@ function new_install() {
             $schema = new adoSchema( $db );
             // Build the SQL array from the schema XML file
             $sql = $schema->ParseSchema($xmlfile_tables);
+// TODO: offer an option to print the raw SQL so it can be done 'manually';
+//$text .= "<pre>".$schema->PrintSQL('TEXT')."</pre>";
             // Execute the SQL on the database
             if ($schema->ExecuteSchema( $sql ) == 2) {
                 $text .= "Creating and updating tables within database '{$database_name}'.\n";

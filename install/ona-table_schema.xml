@@ -946,6 +946,9 @@
     <field name="password" type="C" size="64">
       <NOTNULL/>
     </field>
+    <field name="type" type="C" size="15">
+      <NOTNULL/>
+    </field>
     <field name="level" type="I" size="4">
       <NOTNULL/>
       <DEFAULT value="0"/>

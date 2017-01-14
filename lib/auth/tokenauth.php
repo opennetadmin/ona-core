@@ -125,7 +125,7 @@ class buildtoken {
   public function __construct($user,$noexpire) {
     global $conf;
 
-    // should be unique enough for our purposes.
+    // This method should be unique enough for our purposes.
     $jti=uniqid();
 
     // Sign token with hmac
