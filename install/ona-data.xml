@@ -130,8 +130,7 @@ INSERT INTO dns_views (id, name, description) VALUES
 <query>
 INSERT INTO `manufacturers` VALUES
 (7,'Adtran'),
-(8,'Allied Telesyn'),
-(9,'Cabletron'),
+(8,'VMWare'),
 (1,'Cisco'),
 (5,'Dell'),
 (10,'Extreme Networks'),
@@ -146,14 +145,10 @@ INSERT INTO `manufacturers` VALUES
 INSERT INTO `models` VALUES
 (1,1,'2821',''),
 (2,4,'dv9000t',''),
-(3,4,'4000m',''),
 (4,4,'8000m',''),
-(5,4,'LJ5000',''),
 (6,1,'2948G-L3',''),
 (7,5,'Optiplex GS560',''),
-(8,9,'24TXM-GLS',''),
 (9,3,'Unknown',''),
-(10,6,'Netfinity 2232','');
 </query>
 
 
@@ -212,21 +207,6 @@ INSERT INTO `subnet_types` VALUES
 (13,'lan','LAN','Simple LAN');
 </query>
 
-
-<query>
-INSERT INTO `groups` VALUES
-(17,'Default','Default user group',1),
-(18,'Admin','Admin group',99);
-</query>
-
-
-<query>
-INSERT INTO `group_assignments` VALUES
-(1,17,1),
-(2,18,2);
-</query>
-
-
 <query>
 INSERT INTO `sys_config` (`name`, `value`, `description`, `field_validation_rule`, `failed_rule_text`, `editable`, `deleteable`) VALUES
 ('authtype', 'local', 'Define standard authentication module to use', '', '', 1, 0),
@@ -251,6 +231,20 @@ INSERT INTO `sys_config` (`name`, `value`, `description`, `field_validation_rule
 ('syslog', '0', 'Log via syslog, only works if debug is set to 0', '', '', 0, 0),
 ('version', 'not-set', 'Tracks current installed version, used to detect when upgrades should be done.', '', '', 0, 0),
 ('upgrade_index', '13', 'Tracks current upgrade index, used to perform database upgrades.', '', '', 0, 0);
+</query>
+
+
+<query>
+INSERT INTO `groups` VALUES
+(17,'Default','Default user group',1),
+(18,'Admin','Admin group',99);
+</query>
+
+
+<query>
+INSERT INTO `group_assignments` VALUES
+(1,17,1),
+(2,18,2);
 </query>
 
 

@@ -119,8 +119,8 @@ We have found {$context_count} context(s) in your current db configuration file.
 
 ";
 
-    printf("%-20s %-10s %-20s %-20s %-20s %-5s\n", 'Context Name', 'DB type', 'Server', 'DB name', 'Upgrade Index', 'Version');
-    echo "--------------------------------------------------------------------------------------------------------------\n";
+    printf("%-15s %-10s %-20s %-15s %s\n", 'Context Name', 'DB type', 'Server', 'DB name', 'Version/Upgrade Index');
+    echo "---------------------------------------------------------------------------------------------------\n";
 
 
     // Loop through each context and identify the Databases within
@@ -138,17 +138,16 @@ We have found {$context_count} context(s) in your current db configuration file.
                 $err_txt .= "[{$cname}] Failed to connect as '{$cdbs['db_login']}'\n\n".$db->ErrorMsg()."\n";
             } else {
                 if ($db->SelectDB($cdbs['db_database'])) {
-                    $rs = $db->Execute("SELECT value FROM sys_config WHERE name like 'version'");
-                    $array = $rs->FetchRow();
-                    $curr_ver = $array['value'];
-
-                    if ($curr_ver == $new_ver) { $curr_ver = "$curr_ver (no changes will be done)"; }
-
                     $rs = $db->Execute("SELECT value FROM sys_config WHERE name like 'upgrade_index'");
                     $array = $rs->FetchRow();
                     $upgrade_index = $array['value'];
 
-                    $levelinfo = $upgrade_index;
+                    $rs = $db->Execute("SELECT value FROM sys_config WHERE name like 'version'");
+                    $array = $rs->FetchRow();
+                    $curr_ver = $array['value'].' / '.$upgrade_index;
+
+                    if ($array['value'] == $new_ver) { $curr_ver = "$curr_ver (no changes will be done)"; }
+
                 } else {
                     $status++;
                     $err_txt .= "[{$cname}] Failed to select DB '{$cdbs['db_database']}'\n\n".$db->ErrorMsg()."\n";
@@ -158,7 +157,7 @@ We have found {$context_count} context(s) in your current db configuration file.
             $db->Close();
 
 
-            printf("%-20s %-10s %-20s %-20s %-20s %-5s\n", $cname, $cdbs['db_type'], $cdbs['db_host'], $cdbs['db_database'], $levelinfo, $curr_ver);
+            printf("%-15s %-10s %-20s %-15s %s\n", $cname, $cdbs['db_type'], $cdbs['db_host'], $cdbs['db_database'], $curr_ver);
         }
 
     }
