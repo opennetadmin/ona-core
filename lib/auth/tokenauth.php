@@ -92,11 +92,19 @@ class tokenauth {
 
         // If this token is a perminent token, check if it is enabled
         if ($newtoken->getClaim('exp') > 3000000000) {
-          $jti=$newtoken->getClaim('jti');
+          $jti = $newtoken->getClaim('jti');
+          // Get our perm token from the database
           list($status, $rows, $jwt_perm) = db_get_record($onadb,
                                                          'jwt_perm_tokens',
                                                          "jti like '{$jti}'"
                                             );
+          // Update an access time for the perm token
+          list($status, $rows, $atime) = db_update_record($onadb,
+                                                         'jwt_perm_tokens',
+                                                         array('jti' => $jti),
+                                                         array('atime' => date_mangle(time()))
+                                         );
+
           // Check the perm token to see if it is enabled
           if ($jwt_perm['enabled'] == 0) {
             $errmsg = "Token access has been revoked: jti={$jti}";
@@ -150,7 +158,7 @@ class buildtoken {
 
     // If the user has token_expire, set a huge future time, otherwise use conf setting
     if ($rows) {
-      if ($userrecord['token_expire'] == 1) {
+      if ($userrecord['token_expire'] == 0) {
         $expiretime = 2000000000; // Some time past the year 2080
 
         // Disable current token for this aud

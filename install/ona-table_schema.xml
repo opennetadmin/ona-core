@@ -981,6 +981,9 @@
       <DEFAULT value="1"/>
       <UNSIGNED/>
     </field>
+    <field name="atime" type="T">
+      <NULL/>
+    </field>
   </table>
 
   <table name="vlan_campuses">

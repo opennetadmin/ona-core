@@ -3,3 +3,4 @@ etc/database_settings.inc.php
 logs/
 vendor
 VERSION
+*.swp

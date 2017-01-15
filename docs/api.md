@@ -22,8 +22,18 @@ All ONA modules should return a 'status_msg' containing a human readable message
 
 Additially a 'status_code' will also be returned. A code of zero is a successful status code and indicates all is well. Any other value > 0 indicates some sort of error.  You can use this in clients to determine quickly if things are working properly.
 
-authentication
+Authentication
 ==============
 
-* first off.. use https.. it will not be secure witout it.
-* blah
+* first off.. use https.. it will not be secure without it.
+* All transactions must be authenticated with a JWT API Token.
+* To get a token pass a username and password to the login endpoint
+  * `POST https://onaserver/rest.php/v1/login?user=username&pass=password`
+* There are two two types of user accounts
+  * Standard
+    * A typical human user. They will get a token that expires at an interval defined in configuration. That default timeframe is 8 hours.
+  * Service account
+    * These are app tokens used for server to server communications. The tokens for these users do not expire.  The token ID is tracked both for access time and if it is enabled or not.  Only one token per user per client is allowed to be active.
+    * if a new token is issued for the user on a client that already had a token issued, the old token will be automatically disabled and a new token issued
+    * The last access time of a perminant token is tracked whether enabled or disabled. This facilitates managment of these tokens over time.
+
