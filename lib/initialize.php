@@ -14,38 +14,31 @@ $base = dirname(__DIR__);
 // Load up our composer installed libraries
 require_once($base.'/vendor/autoload.php');
 
-
-
-
-
 // These variables are default values.  If you want to change them or add to them
-// you should edit etc/config.php. Whatever you add there will be merged with this.
-$conf_default = array (
-    /* General Setup */
+// Do so by configuring them in the sys_config database table
+$conf = array (
     // Database Context
-    // For possible values see the $ona_contexts() array  in the database_settings.php file
+    // For possible values see the $ona_contexts() array in the database_settings.php file
     'default_context'        => 'DEFAULT',
 
     // set a default token lifetime to 8 hours (a work day)
     'token_expire_time'      => '28800',
-
-    /* Settings for dcm.pl */
-    'dcm_module_dir'         => "$base/modules",
-    'plugin_dir'             => "$base/local/plugins",
-
-    /* Defaults for some user definable options normally in sys_config table */
-    'log_to_file'            => '0',
-    'log_to_syslog'          => '1',
-    'log_to_db'              => '0',
-    'log_file'               => './logs/ona.log',
-    // Sets the lowest level of logging per rfc 5424
-    'log_level'              => 'NOTICE',
-    'log_syslog_facility'    => 'local6',
-
-    // A string for signing our auth tokens.  You should set this in your local conf
+    // A string for signing our auth tokens.
     'token_signing_key'      => 'CHANGEME!!',
 
-    /* The output charset to be used in htmlentities() and htmlspecialchars() filtering */
+    // Defaults for some user definable options normally in sys_config table 
+    // Sets the lowest level of logging per rfc 5424
+    'log_level'              => 'NOTICE',
+
+    'log_to_syslog'          => '1',
+    'log_syslog_facility'    => 'local6',
+
+    'log_to_file'            => '0',
+    'log_file'               => "{$base}/logs/ona.log",
+
+    'log_to_db'              => '0',
+
+    // The output charset to be used in htmlentities() and htmlspecialchars() filtering 
     'charset'                => 'utf8',
     'php_charset'            => 'UTF-8',
 
@@ -56,26 +49,13 @@ $conf_default = array (
 );
 
 
-// Configuration for the slim framework, these are default values
-// Set your own configurations in etc/config.php
-// The entry in etc/config.php will override this one
+// Configuration for the slim framework
 $slimconfig = [
     'settings' => [
         'displayErrorDetails' => true,
         'addContentLengthHeader' => false,
     ],
 ];
-
-
-
-// Include your own local configuration
-@include("{$base}/etc/config.php");
-
-// merge our two config arrays
-// NOTE: below we layer in the conf values from sys_config table
-$conf = array_merge($conf_default, $conf);
-
-
 
 
 
@@ -107,8 +87,11 @@ require_once('auth/functions_auth.php');
 
 
 
-
 ###### set up logging
+
+// Set the default timezone to UTC if not otherwise
+// set on the system. This should read /etc/timezone or similar.
+setTimezone('UTC');
 
 use Monolog\Logger;
 use Monolog\Handler\StreamHandler;
@@ -116,12 +99,12 @@ use Monolog\Handler\SyslogHandler;
 
 // Create the logger
 $logger = new Logger('onacore');
-if ($conf['log_to_file']) {
+if (isset($conf['log_to_file']) and $conf['log_to_file'] == 1) {
   $fileloghandler = new StreamHandler($conf['log_file'], $conf['log_level'] );
   $logger->pushHandler($fileloghandler);
 }
 
-if ($conf['log_to_syslog']) {
+if (isset($conf['log_to_syslog']) and $conf['log_to_syslog'] == 1) {
   $sysloghandler = new SyslogHandler('ona', $conf['log_syslog_facility'], $conf['log_level'] );
   $logger->pushHandler($sysloghandler);
 }
@@ -164,28 +147,17 @@ if (file_exists($dbconffile)) {
         exit(1);
     }
 } else {
-#    echo "Unable to open database config file: $dbconffile\n";
-#    echo "Please run installer: php ${base}/install/install.php\n";
-#    exit;
+     printmsg('Unable to open database_settings.inc.php. Could be that you have not run the installer yet.','alert');
 }
-
-/*
-TODO: figure out the installer process
-
-// Check to see if the run_install file exists.
-// If it does, run the install process.
-if (file_exists($base.'/local/config/run_install') or @$runinstaller or @$install_submit == 'Y') {
-    // Process the install script
-    require_once($base.'/../install/install.php');
-    exit;
-}
-*/
 
 // If we dont have a ona_context set in the cookie, lets set a cookie with the default context
-if (!isset($_COOKIE['ona_context_name'])) { $_COOKIE['ona_context_name'] = $conf['default_context']; setcookie("ona_context_name", $conf['default_context']); }
+// TODO: do I really want this in the cookie? how bout just set it as a variable.
+if (!isset($_COOKIE['ona_context_name'])) {
+  $_COOKIE['ona_context_name'] = $conf['default_context'];
+  setcookie("ona_context_name", $conf['default_context']); 
+}
 
 // (Re)Connect to the DB now.
-#global $onadb;
 $onadb = db_pconnect('', $_COOKIE['ona_context_name']);
 
 // Load the actual user config from the database table sys_config
@@ -195,6 +167,3 @@ foreach ($records as $record) {
     printmsg("Loaded config item from database: {$record['name']}=''{$record['value']}''",'debug');
     $conf[$record['name']] = $record['value'];
 }
-
-
-

@@ -2,7 +2,7 @@
 <?php
 
 // Load our initialization library
-require_once(__DIR__.'/../lib/initialize.php');
+@require_once(__DIR__.'/../lib/initialize.php');
 
 require_once(__DIR__.'/../vendor/adodb/adodb-php/adodb-xmlschema03.inc.php');
 
@@ -14,12 +14,6 @@ $xmlfile_tables = $base.'/install/ona-table_schema.xml';
 $xmlfile_data = $base.'/install/ona-data.xml';
 $new_ver = trim(@file_get_contents($base.'/VERSION'));
 $curr_ver = '';
-
-# junk output from included functions
-#$stdout = '';
-#$syslog = '';
-#$log_to_db = '';
-
 $install_complete=1;
 
 
@@ -63,7 +57,7 @@ function check_requirements() {
 
   global $base;
 
-  system('clear');
+  #system('clear');
   // Get some pre-requisite information
   $phpversion = phpversion() > '5.0' ? 'PASS' : 'FAIL';
   $hasgmp = function_exists( 'gmp_init' ) ? 'PASS' : 'FAIL';
@@ -91,18 +85,12 @@ EOL;
 
 
 
-/*
-// Initial text for the greeting div
-$greet_txt = "It looks as though this is your first time running OpenNetAdmin. Please answer a few questions and we'll initialize the system for you. We've pre-populated some of the fields with suggested values.  If the database you specify below already exists, it will be overwritten entirely.";
-
-
-*/
-
 
 
 function upgrade() {
     global $text,$new_ver,$xmlfile_data,$xmlfile_tables,$dbconffile,$status,$base;
 
+    $err_txt = '';
 
     // Get the existing database config so we can connect using its settings
     include($dbconffile);
@@ -167,18 +155,23 @@ We have found {$context_count} context(s) in your current db configuration file.
       $upgrade_submit = promptUser("\nPerform the upgrade (y/N)? ", 'N');
     } else {
         echo <<<EOL
+
 There was an error determining database context versions. Please correct them before proceeding.
 Check that the content of your database configuration file is accurate
 and that the databases themselves are configured properly.
 
-CONTENTS:
+DBCONFFILE LOCATION:
 '{$dbconffile}'
 
 ERROR:
 {$err_txt}
 EOL;
-      $upgrade_submit = promptUser("\nRetry (y/N)? ", 'N');
-// TODO this needs to just start over the process??
+      $retry = promptUser("\nRetry (y/N)? ", 'N');
+      if ($retry == 'Y' or $retry == 'y') {
+        upgrade();
+      } else {
+        exit;
+      }
     }
 
 
@@ -188,9 +181,7 @@ EOL;
 
     $upgrade_submit = sanitize_YN($upgrade_submit);
     // If they have selected to keep the tables then remove the run_install file
-    if ($upgrade_submit == 'N') {
-      exit;
-    } else {
+    if ($upgrade_submit == 'Y' or $upgrade_submit == 'y') {
 
       echo "\nPlease provide admin credentials to make database updates.\n";
 
@@ -338,7 +329,9 @@ EOL;
         $text .= "There was a fatal error. Upgrade may be incomplete. Fix the issue and try again\n";
       }
 
-  } // End of if upgrade_submit Y option
+  } else {  // End of if upgrade_submit Y option
+      exit;
+  } 
 
 echo $text;
 
@@ -351,7 +344,19 @@ echo $text;
 // This is the section for an brand new install
 function new_install() {
 
-    global $text,$xmlfile_data,$xmlfile_tables,$dbconffile,$status;
+    global $text,$xmlfile_data,$xmlfile_tables,$dbconffile,$status,$new_ver;
+
+
+    // Initial text greeting
+    echo <<<EOL
+
+It looks as though this is your first time running OpenNetAdmin.
+Please answer a few questions and we'll initialize the system for you.
+We've pre-populated some of the fields with suggested values.
+If the database you specify below already exists, it will be overwritten entirely.
+
+
+EOL;
 
     // Gather info
     $dbtype = 'mysqli'; $adotype = $dbtype;
@@ -430,7 +435,7 @@ function new_install() {
             // Build the SQL array from the schema XML file
             $sql = $schema->ParseSchema($xmlfile_tables);
 // TODO: offer an option to print the raw SQL so it can be done 'manually';
-//$text .= "<pre>".$schema->PrintSQL('TEXT')."</pre>";
+//$text .= $schema->PrintSQL('TEXT');
             // Execute the SQL on the database
             if ($schema->ExecuteSchema( $sql ) == 2) {
                 $text .= "Creating and updating tables within database '{$database_name}'.\n";
@@ -446,7 +451,7 @@ function new_install() {
                 $schema = new adoSchema( $db );
                 // Build the SQL array from the schema XML file
                 $sql = $schema->ParseSchema($xmlfile_data);
-                //$text .= "<pre>".$schema->PrintSQL('TEXT')."</pre>";
+#     $text .= $schema->PrintSQL('TEXT');
                 // Execute the SQL on the database
                 if ($schema->ExecuteSchema( $sql ) == 2) {
                     $text .= "Loaded tables with default data.\n";
@@ -512,8 +517,8 @@ EOL;
             }
 
             // Update the version element in the sys_config table
-            if(@$db->Execute("UPDATE sys_config SET value='{$new_ver}' WHERE name like 'version'")) {
-               // $text .= "<img src=\"{$images}/silk/accept.png\" border=\"0\" /> Updated local version info.<br>";
+            if($db->Execute("UPDATE sys_config SET value='{$new_ver}' WHERE name like 'version'")) {
+               $text .= "Updated local version info.";
             }
             else {
                 $status++;
@@ -528,8 +533,6 @@ EOL;
         }
 
 
-
-//TODO: fix this
         if ($status > 0) {
             $text .= "There was a fatal error. Install may be incomplete. Fix the issue and try again\n";
         } else {

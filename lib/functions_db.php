@@ -84,34 +84,17 @@ function db_pconnect($type, $context_name) {
     global $conf, $base, $self, $ona_contexts;
     global $db_context;
 
-
-    // Get info from old $db_context[] array if ona_contexts does not exist
-    // this is transitional, hopefully I can remove this part soon.
-    if (!is_array($ona_contexts) and is_array($db_context)) {
-        $type='mysqlt';
-        $ona_contexts[$context_name]['databases']['0']['db_type']     = $db_context[$type] [$context_name] ['primary'] ['db_type'];
-        $ona_contexts[$context_name]['databases']['0']['db_host']     = $db_context[$type] [$context_name] ['primary'] ['db_host'];
-        $ona_contexts[$context_name]['databases']['0']['db_login']    = $db_context[$type] [$context_name] ['primary'] ['db_login'];
-        $ona_contexts[$context_name]['databases']['0']['db_passwd']   = $db_context[$type] [$context_name] ['primary'] ['db_passwd'];
-        $ona_contexts[$context_name]['databases']['0']['db_database'] = $db_context[$type] [$context_name] ['primary'] ['db_database'];
-        $ona_contexts[$context_name]['databases']['0']['db_debug']    = $db_context[$type] [$context_name] ['primary'] ['db_debug'];
-        $ona_contexts[$context_name]['databases']['1']['db_type']     = $db_context[$type] [$context_name] ['secondary'] ['db_type'];
-        $ona_contexts[$context_name]['databases']['1']['db_host']     = $db_context[$type] [$context_name] ['secondary'] ['db_host'];
-        $ona_contexts[$context_name]['databases']['1']['db_login']    = $db_context[$type] [$context_name] ['secondary'] ['db_login'];
-        $ona_contexts[$context_name]['databases']['1']['db_passwd']   = $db_context[$type] [$context_name] ['secondary'] ['db_passwd'];
-        $ona_contexts[$context_name]['databases']['1']['db_database'] = $db_context[$type] [$context_name] ['secondary'] ['db_database'];
-        $ona_contexts[$context_name]['databases']['1']['db_debug']    = $db_context[$type] [$context_name] ['secondary'] ['db_debug'];
-        $ona_contexts[$context_name]['description']   = 'Default data context';
-        $ona_contexts[$context_name]['context_color'] = '#D3DBFF';
-    }
-
+    $connected = 0;
+    $object = 0;
+/*
     // check if the context name passed in is in our array or not
     if (!isset($ona_contexts[$context_name])) {
         setcookie("ona_context_name", $conf['default_context']);
         //printmsg("Unable to find context name '{$context_name}' in the ona_contexts configuration. Reverting back to '{$conf['default_context']}' context.",'warning');
-        echo "WARNING => Unable to find context name '{$context_name}' in the ona_contexts configuration.  Please check {$base}/etc/database_settings.inc.php is configured properly.  Reverting back to '{$conf['default_context']}' context.";
+        echo "WARNING => Unable to find context name '{$context_name}' in the ona_contexts configuration.  Please check {$base}/etc/database_settings.inc.php is configured properly.  Reverting back to '{$conf['default_context']}' context.\n";
         return $object;
     }
+*/
 
 
     // Populate basic context info into the self storage array
@@ -159,7 +142,7 @@ function db_pconnect($type, $context_name) {
 
     // If it still isn't connected, return an error.
     if ($connected == 0)
-        printmsg("{$self['db_type']} DB connection failed after 5 tries!  Maybe server is down?", 'alert');
+        @printmsg("{$self['db_type']} DB connection failed after 5 tries!  Maybe server is down?", 'alert');
 
     return $object;
 }

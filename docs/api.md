@@ -25,8 +25,9 @@ Additially a 'status_code' will also be returned. A code of zero is a successful
 Authentication
 ==============
 
-* first off.. use https.. it will not be secure without it.
+* First off.. use https.. Your connections will not be secure without it.
 * All transactions must be authenticated with a JWT API Token.
+* Tokens are signed by and for the server that hands them out. This key is a random string generated during install and stored in the `sys_config` table under `token_signing_key`. You can change this key but it will invalidate all existing tokens.
 * To get a token pass a username and password to the login endpoint
   * `POST https://onaserver/rest.php/v1/login?user=username&pass=password`
 * There are two two types of user accounts
