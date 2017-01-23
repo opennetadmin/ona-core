@@ -22,5 +22,5 @@ These are items that should be covered when converting modules to the new ona-co
 v1 to ona-core
 ==============
 
-* need to take values out of sys_config table and put them in etc/config.php $conf.
-  * is there a helper tool to do this for us that could be created?
+* /etc/onabase should be updated to /opt/ona-core or similar?
+* copy database_settings.inc.php over to /opt/ona-core/etc

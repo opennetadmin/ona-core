@@ -32,6 +32,18 @@ use ONA\auth;
 // Initiate slim
 $app = new \Slim\App($slimconfig);
 
+
+
+// Load all the dynamic plugin controllers
+$plugin_controllers = plugin_list('controller');
+foreach ($plugin_controllers as $p) {
+  require_once($p['path']);
+}
+
+
+
+
+
 // Make the root path redirect to document
 $app->get('/', function ($request, $response) {
   return $response->withRedirect ((string)($request->getUri()->withPath('/api-doc.html')));

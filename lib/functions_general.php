@@ -64,6 +64,43 @@ EMERGENCY (600): Emergency: system is unusable.
 
 
 
+/////////////////////////////////////////////
+// Returns a list of available local plugins of given type
+//
+// Patterned from dokuwiki by Andreas Gohr <andi@splitbrain.org>
+//
+// Not currently utilizing the "type" stuff as I could be
+//
+// returns an array of plugin names that have a specific type available.
+//
+/////////////////////////////////////////////
+function plugin_list($type=''){
+  global $base;
+  $plugins = array();
+  $i=0;
+  // check local plugins, then builtin plugins
+  $plugin_paths = array($base."/www/local/plugins/",$base."/plugins/");
+  foreach ($plugin_paths as $plugin_path) {
+    if ($dh = @opendir($plugin_path)) {
+        while (false !== ($plugin = readdir($dh))) {
+            if ($plugin == '.' || $plugin == '..' || $plugin == 'tmp' || $plugin == '.git'|| substr($plugin, -7) == '.tar.gz') continue;
+            if (is_file($plugin_path.$plugin)) continue;
+
+            if ($type=='' || @file_exists($plugin_path."$plugin/$type.php") and @!file_exists($plugin_path."$plugin/plugin_disabled")){
+                $plugins[$i]['name'] = $plugin;
+                //if we did not specify a type.. just get the path for the plugin
+                if($type=='')
+                    $plugins[$i]['path'] = $plugin_path."$plugin";
+                else
+                    $plugins[$i]['path'] = $plugin_path."$plugin/$type.php";
+                $i++;
+            }
+        }
+        closedir($dh);
+    }
+  }
+  return $plugins;
+}
 
 
 

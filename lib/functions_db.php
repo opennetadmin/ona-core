@@ -1451,7 +1451,6 @@ function ona_find_domain($fqdn="", $returndefault=0) {
     global $conf;
     $status=1;
     $fqdn = strtolower($fqdn);
-    printmsg("DEBUG => ona_find_domain({$fqdn}) called", 3);
 
     // lets test out if it has a / in it to strip the view name portion
     if (strstr($fqdn,'/')) {
@@ -1472,7 +1471,7 @@ function ona_find_domain($fqdn="", $returndefault=0) {
             list($status, $rowsa, $record) = ona_get_domain_record(array('name' => $name));
             if ($rowsa) {
                 $domain = $record;
-                printmsg("DEBUG => ona_find_domain({$fqdn}) Found: {$domain['fqdn']}", 3);
+                printmsg("Found: {$domain['fqdn']}", 'debug');
                 $foundone = 1;
             }
         }
@@ -1482,7 +1481,7 @@ function ona_find_domain($fqdn="", $returndefault=0) {
             list($status, $rowsb, $record) = ona_get_domain_record(array('name' => $name, 'parent_id' => $domain['id']));
             if ($rowsb) {
                 $domain = $record;
-                printmsg("DEBUG => ona_find_domain({$fqdn}) Found with parent: {$domain['fqdn']}", 3);
+                printmsg("Found with parent: {$domain['fqdn']}", 'debug');
                 $foundone = 1;
                 $name = '';
             } else {
@@ -1490,7 +1489,7 @@ function ona_find_domain($fqdn="", $returndefault=0) {
                 list($status, $rowsb, $record) = ona_get_domain_record(array('name' => "{$name}.{$domain['fqdn']}", 'parent_id' => 0));
                 if ($rowsb) {
                     $domain = $record;
-                    printmsg("DEBUG => ona_find_domain({$fqdn}) Found with parent: {$domain['fqdn']}", 3);
+                    printmsg("Found with parent: {$domain['fqdn']}", 'debug');
                     $foundone = 1;
                     $name = '';
                 }
@@ -1572,7 +1571,7 @@ function ona_find_dns_record($search="",$type='',$int_id=0) {
 
     // Find the domain name piece of $search
     list($status, $rows, $domain) = ona_find_domain($search);
-    printmsg("DEBUG => ona_find_domain({$search}) returned: {$domain['fqdn']}", 3);
+    printmsg("Returned: {$domain['fqdn']}", 'debug');
 
     // Now find what the host part of $search is
     $hostname = str_replace(".{$domain['fqdn']}", '', $search);
@@ -1594,7 +1593,7 @@ function ona_find_dns_record($search="",$type='',$int_id=0) {
 
     if ($rows) {
         // Return good status, one row, and $dns array
-        printmsg("DEBUG => ona_find_dns_record({$search}) called, found: {$dns['fqdn']}({$dns['type']})", 3);
+        printmsg("Found: {$dns['fqdn']}({$dns['type']})", 'debug');
         return(array(0, 1, $dns));
     }
 
@@ -1609,7 +1608,7 @@ function ona_find_dns_record($search="",$type='',$int_id=0) {
         'dns_id'      => 0
     );
 
-    printmsg("DEBUG => ona_find_dns_record({$search}) called, Nothing found, returning fake entry: {$dns['fqdn']}({$dns['type']})", 3);
+    printmsg("Nothing found, returning fake entry: {$dns['fqdn']}({$dns['type']})", 'debug');
     return(array(0, 1, $dns));
 }
 
