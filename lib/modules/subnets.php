@@ -54,23 +54,25 @@ function subnets($options="") {
     $and = " AND ";
 
     // enable or disable wildcards
+    $wildcard = '';
 #    $wildcard = '%';
-#    if ($options['nowildcard']) $wildcard = '';
+#    if (isset($options['nowildcard'])) $wildcard = '';
 
     // VLAN ID
-    if ($options['vlan']) {
+    if (isset($options['vlan'])) {
         $where .= $and . "vlan_id = " . $onadb->qstr($options['vlan_id']);
         $and = " AND ";
     }
 
     // SUBNET TYPE
-    if ($options['type']) {
-        $where .= $and . "subnet_type_id = " . $onadb->qstr($options['type']);
+    if (isset($options['type'])) {
+        list($status, $rows, $net_type) = ona_find_subnet_type($options['type']);
+        $where .= $and . "subnet_type_id = " . $onadb->qstr($net_type['id']);
         $and = " AND ";
     }
 
     // SUBNET NAME
-    if ($options['name']) {
+    if (isset($options['name'])) {
         // This field is always upper case
         $options['name'] = strtoupper($options['name']);
         $where .= $and . "name LIKE " . $onadb->qstr($wildcard.$options['name'].$wildcard);
@@ -78,10 +80,10 @@ function subnets($options="") {
     }
 
     // IP ADDRESS
-    if ($options['ip']) {
+    if (isset($options['ip'])) {
         // Build $ip and $ip_end from $options['ip_subnet'] and $options['ip_subnet_thru']
         $ip = ip_complete($options['ip'], '0');
-        if ($options['endip']) {
+        if (isset($options['endip'])) {
             $ip = ip_complete($options['ip'], '0');
             $ip_end = ip_complete($options['endip'], '255');
 
@@ -104,21 +106,21 @@ function subnets($options="") {
     }
 
     // tag
-    if ($options['tag']) {
+    if (isset($options['tag'])) {
         $where .= $and . "id in (select reference from tags where type like 'subnet' and name in ('". implode('\',\'', explode (',',$options['tag']) ) . "'))";
         $and = " AND ";
 
     }
 
     // custom attribute type
-    if ($options['catype']) {
+    if (isset($options['catype'])) {
         $where .= $and . "id in (select table_id_ref from custom_attributes where table_name_ref like 'subnets' and custom_attribute_type_id = (SELECT id FROM custom_attribute_types WHERE name = " . $onadb->qstr($options['catype']) . "))";
         $and = " AND ";
         $cavaluetype = "and custom_attribute_type_id = (SELECT id FROM custom_attribute_types WHERE name = " . $onadb->qstr($options['catype']) . ")";
     }
 
     // custom attribute value
-    if ($options['cavalue']) {
+    if (isset($options['cavalue'])) {
         $where .= $and . "id in (select table_id_ref from custom_attributes where table_name_ref like 'subnets' {$cavaluetype} and value like " . $onadb->qstr($wildcard.$options['cavalue'].$wildcard) . ")";
         $and = " AND ";
     }
@@ -763,7 +765,7 @@ EOM
 
 
     // Set options['set_name']?
-    if ($options['set_name']) {
+    if (isset($options['set_name'])) {
         // BUSINESS RULE: We require subnet names to be in upper case and spaces are converted to -'s.
         $options['set_name'] = trim($options['set_name']);
         $options['set_name'] = preg_replace('/\s+/', '-', $options['set_name']);
@@ -779,7 +781,7 @@ EOM
 
 
     // Set options['set_type']?
-    if ($options['set_type']) {
+    if (isset($options['set_type'])) {
         // Find the type from $options[type]
         list($status, $rows, $subnet_type) = ona_find_subnet_type($options['set_type']);
         if ($status or $rows != 1) {

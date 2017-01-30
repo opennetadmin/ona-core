@@ -616,7 +616,7 @@ function db_get_record($dbh=0, $table="", $where="", $order="") {
     // Select the record from the DB, cache results
     else {
         // Set a detault unless it's already set
-        if (!$self['db_get_record']['secs_to_cache']) {
+        if (!isset($self['db_get_record']['secs_to_cache'])) {
             $self['db_get_record']['secs_to_cache'] = 60;
         }
 
@@ -934,8 +934,9 @@ function ona_get_record($where="", $table="", $order="") {
 //   domain_id   => domain id for the associated primary_dns_id
 //   domain_name => domain name for the associated primary_dns_id's domain
 function ona_get_host_record($array='', $order='') {
+    $status_dns = 0;
     list($status, $rows, $record) = ona_get_record($array, 'hosts', $order);
-    if ($status) {
+    if ($rows) {
       list($status_dns, $rows_dns, $dns) = ona_get_dns_record(array('id' => $record['primary_dns_id']));
       $record['name'] = $dns['name'];
       $record['fqdn'] = $dns['fqdn'];
@@ -974,13 +975,15 @@ function ona_get_domain_record($array='', $order='') {
 function ona_get_dns_record($array='', $order='') {
     list($status, $rows, $record) = ona_get_record($array, 'dns', $order);
 
-    if ($record['type'] == 'A' or $record['type'] == 'TXT') {
+    if ($rows) {
+      if ($record['type'] == 'A' or $record['type'] == 'TXT') {
         $record['fqdn'] = $record['name'].'.'.ona_build_domain_name($record['domain_id']);
         $record['domain_fqdn'] = ona_build_domain_name($record['domain_id']);
-    }
-    if ($record['type'] == 'CNAME') {
+      }
+      if ($record['type'] == 'CNAME') {
         $record['fqdn'] = $record['name'].'.'.ona_build_domain_name($record['domain_id']);
         $record['domain_fqdn'] = ona_build_domain_name($record['domain_id']);
+      }
     }
     return(array($status, $rows, $record));
 }
@@ -993,7 +996,7 @@ function ona_get_config_record($array='', $order='ctime DESC') {
     list($status, $rows, $record) = ona_get_record($array, 'configurations', $order);
 
     // Lets be nice and return a little associated info
-    if ($status) {
+    if ($rows) {
       list($status_tmp, $rows_tmp, $record_tmp) = ona_get_config_type_record(array('id' => $record['configuration_type_id']));
       $status += $status_tmp;
       $record['config_type_name'] = $record_tmp['name'];
@@ -1018,7 +1021,7 @@ function ona_get_custom_attribute_record($array) {
     list($status, $rows, $record) = ona_get_record($array, 'custom_attributes');
 
     // Lets be nice and return a little associated info
-    if ($status) {
+    if ($rows) {
       list($status_tmp, $rows_tmp, $record_tmp) = ona_get_custom_attribute_type_record(array('id' => $record['custom_attribute_type_id']));
       $status += $status_tmp;
       $record['name'] = $record_tmp['name'];
@@ -1034,7 +1037,7 @@ function ona_get_model_record($array) {
     list($status, $rows, $record) = ona_get_record($array, 'models');
 
     // Lets be nice and return a little associated info
-    if ($status) {
+    if ($rows) {
       list($status_tmp, $rows_tmp, $record_tmp) = ona_get_manufacturer_record(
                                                     array('id' => $record['manufacturer_id'])
                                                 );
@@ -1065,7 +1068,7 @@ function ona_get_subnet_record($array) {
     list($status, $rows, $record) = ona_get_record($array, 'subnets');
 
     // Lets be nice and return a little associated info
-    if ($status) {
+    if ($rows) {
       list($status_tmp, $rows_tmp, $record_tmp) = ona_get_subnet_type_record(array('id' => $record['subnet_type_id']));
       $status += $status_tmp;
       $record['subnet_type_name'] = $record_tmp['name'];
@@ -1082,7 +1085,7 @@ function ona_get_vlan_record($array) {
     list($status, $rows, $record) = ona_get_record($array, 'vlans');
 
     // Lets be nice and return a little associated info
-    if ($status) {
+    if ($rows) {
       list($status_tmp, $rows_tmp, $record_tmp) = ona_get_vlan_campus_record(
                                                     array('id' => $record['vlan_campus_id'])
                                                 );
@@ -1105,7 +1108,7 @@ function ona_get_dhcp_option_entry_record($array) {
     list($status, $rows, $record) = ona_get_record($array, 'dhcp_option_entries');
 
     // Lets be nice and return a little associated info
-    if ($status) {
+    if ($rows) {
       list($status_tmp, $rows_tmp, $record_tmp) = ona_get_dhcp_option_record(array('id' => $record['dhcp_option_id']));
       $status += $status_tmp;
       $record['number'] = $record_tmp['number'];
@@ -1330,13 +1333,13 @@ function ona_build_domain_name($search='') {
 ///////////////////////////////////////////////////////////////////////
 function ona_find_host($search="") {
     global $conf, $self, $onadb;
-    printmsg("DEBUG => ona_find_host({$search}) called", 3);
+    printmsg("ona_find_host({$search}) called", 'debug');
 
     // By record ID?
     if (is_numeric($search)) {
         list($status, $rows, $host) = ona_get_host_record(array('id' => $search));
         if ($rows) {
-            printmsg("DEBUG => ona_find_host({$search}) called, found: {$host['fqdn']}", 3);
+            printmsg("Found: {$host['fqdn']}", 'debug');
             return(array($status, $rows, $host));
         }
     }
@@ -1364,7 +1367,7 @@ function ona_find_host($search="") {
     if (strstr($search,'/')) {
         list($dnsview,$search) = explode('/', $search);
         list($status, $rows, $view) = db_get_record($onadb, 'dns_views', array('name' => strtoupper($dnsview)));
-        printmsg("DEBUG => ona_find_host: DNS view [{$dnsview}] was not found, using default", 2);
+        printmsg("DNS view [{$dnsview}] was not found, using default", 'info');
         if(!$rows) $view['id'] = 0;
     }
 
@@ -1376,11 +1379,11 @@ function ona_find_host($search="") {
     // Find the 'first', domain name piece of $search
     list($status, $rows, $domain) = ona_find_domain($search,0);
     if (!isset($domain['id'])) {
-        printmsg("ERROR => Unable to determine domain name portion of ({$search})!", 3);
-        $self['error'] = "ERROR => Unable to determine domain name portion of ({$search})!";
+        printmsg("Unable to determine domain name portion of ({$search})!", 'notice');
+        $self['error'] = "Unable to determine domain name portion of ({$search})!";
         return(array(3, $self['error'] . "\n"));
     }
-    printmsg("DEBUG => ona_find_domain({$search}) returned: {$domain['fqdn']}", 3);
+    printmsg("Returned: {$domain['fqdn']}", 'debug');
 
     // Now find what the host part of $search is
     $hostname = str_replace(".{$domain['fqdn']}", '', $search);
@@ -1512,6 +1515,10 @@ function ona_find_domain($fqdn="", $returndefault=0) {
 //     }
 
     // FIXME: MP  rows is not right here..  need to look at fixing it.. rowsa/rowsb above doesnt translate.. do I even need that?
+// HACKERYDOOOOO.. I assume if we have made it this far, we have found a domain to return, and it should be just 1.
+$rows = 0;
+if ($foundone) $rows = 1;
+// END HACKERYDOOOO
     return(array($status, $rows, $domain));
 }
 
@@ -1748,7 +1755,7 @@ function ona_find_location($search="") {
 //    6  :: More than one interface has that MAC address
 ///////////////////////////////////////////////////////////////////////
 function ona_find_interface($search="") {
-    printmsg("DEBUG => ona_find_interface({$search}) called", 3);
+    printmsg("ona_find_interface({$search}) called", 'debug');
 
     // Validate input
     if ($search == "")
@@ -1761,7 +1768,7 @@ function ona_find_interface($search="") {
             list($status, $rows, $record) = ona_get_interface_record("{$field} like '{$search}'");
             // If we got it, return it
             if ($status == 0 and $rows == 1) {
-                printmsg("DEBUG => ona_find_interface() found interface record by {$field}", 2);
+                printmsg("Found interface record by {$field}", 'debug');
                 return(array(0, $rows, $record));
             }
         }
@@ -1773,16 +1780,16 @@ function ona_find_interface($search="") {
         list($status, $rows, $record) = ona_get_interface_record("ip_addr like '{$ip}'");
         // If we got it, return it
         if ($status == 0 and $rows == 1) {
-            printmsg("DEBUG => ona_find_interface() found record by IP address", 2);
+            printmsg("Found record by IP address", 'debug');
             return(array(0, $rows, $record));
         }
 
         // Otherwise return an error
         if ($rows == 0) {
-            printmsg("DEBUG => No interface has the IP address: $search", 2);
+            printmsg("No interface has the IP address: $search", 'info');
             return(array(3, $rows, array()));
         }
-        printmsg("DEBUG => More than one interface has the IP address: $search", 2);
+        printmsg("More than one interface has the IP address: $search", 'notice');
         return(array(4, $rows, array()));
     }
 
@@ -1796,21 +1803,21 @@ function ona_find_interface($search="") {
 
         // If we got it, return it
         if (!$status and $rows == 1) {
-            printmsg("DEBUG => ona_find_interface() found record by MAC address", 2);
+            printmsg("Found record by MAC address", 'debug');
             return(array(0, $rows, $record));
         }
 
         // Otherwise return an error
         if ($rows == 0) {
-            printmsg("ERROR => No interface has the MAC address: $search", 2);
+            printmsg("No interface has the MAC address: $search", 'info');
             return(array(5, 0, array()));
         }
-        printmsg("DEBUG => ona_find_interface() More than one interface has the MAC address: " . mac_mangle($mac, 1), 0);
+        printmsg("More than one interface has the MAC address: " . mac_mangle($mac, 1), 'notice');
         return(array(6, 0, array()));
     }
 
     // We didn't find it - return and error code, 0 matches, and an empty record.
-    printmsg("DEBUG => ona_find_interface() couldn't find a unique interface record with specified search criteria", 1);
+    printmsg("Couldn't find a unique interface record with specified search criteria", 'debug');
     return(array(2, 0, array()));
 }
 
@@ -2050,8 +2057,8 @@ function ona_find_device_type($search="") {
     }
 
     // It's a string - do several sql queries and see if we can get a unique match
-    list($manufmodel, $role) = split("\(",$search);
-    list($manuf, $model) = split(", ",$manufmodel);
+    list($manufmodel, $role) = preg_split("/\(/",$search);
+    list($manuf, $model) = preg_split("/, /",$manufmodel);
     $role = preg_replace(array('/\(/','/\)/'),'',"{$role}");
     list($status, $rows, $manu) = ona_get_manufacturer_record(array('name' => $manuf));
     list($status, $rows, $rol) = ona_get_role_record(array('name' => $role));

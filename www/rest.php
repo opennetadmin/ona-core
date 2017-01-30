@@ -1,5 +1,17 @@
 <?php
 
+
+/*
+
+some future ideas:
+* symlink an index.php to the rest.php 
+* make the GUI itself just a plugin to ona-core.  if it is installed the rest.php file will
+  take you to it instead of the api-docs.  this may mean its better to just forgo the symlink and rest.php name
+* what does this mean for a stand alone GUI install?  it would need to be in /opt/ona-core/www/local/plugins/gui?? or can it stand on its own with a vhost config
+
+
+*/
+
 // Load our initialization library
 require_once(__DIR__.'/../lib/initialize.php');
 
@@ -83,7 +95,22 @@ $app->group('/v1', function () {
       $this->map(['GET', 'DELETE', 'POST'], '/dhcpoption', 'ONA\controllers\subnets:dhcp');
     });
   });
+/*
+  $this->group('/hosts', function () {
+    new ONA\controllers\hosts($this);
+    $this->map(['GET', 'POST'], '', 'ONA\controllers\hosts:Any');
 
+    $this->group('/{host}', function () {
+      $this->map(['GET', 'DELETE', 'POST'], '', 'ONA\controllers\hosts:Specific');
+      $this->map(['GET', 'DELETE', 'POST'], '/tags', 'ONA\controllers\hosts:tags');
+      // This is an alt method for tags.. seems 'simpler'? decide if we keep it. not 'consistant'
+     # $this->map(['GET', 'DELETE', 'POST'], '/tags/{name}', 'ONA\controllers\hosts:tags');
+      $this->map(['GET', 'DELETE', 'POST'], '/ca', 'ONA\controllers\hosts:ca');
+      $this->map(['GET', 'DELETE', 'POST'], '/dhcpserver', 'ONA\controllers\hosts:dhcp');
+      $this->map(['GET', 'DELETE', 'POST'], '/dhcpoption', 'ONA\controllers\hosts:dhcp');
+    });
+  });
+*/
 })->add(new ONA\auth\tokenauth());
  
 // Run our slim app
