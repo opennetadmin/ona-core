@@ -1071,7 +1071,7 @@ function ona_get_subnet_record($array) {
     if ($rows) {
       list($status_tmp, $rows_tmp, $record_tmp) = ona_get_subnet_type_record(array('id' => $record['subnet_type_id']));
       $status += $status_tmp;
-      $record['subnet_type_name'] = $record_tmp['name'];
+      $record['subnet_type_name'] = $record_tmp['display_name'];
     }
 
     return(array($status, $rows, $record));
