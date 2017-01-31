@@ -46,7 +46,7 @@ Use the token field from the resulting json for Authentication.
 
 # Group Subnets
 
-## Subnet list [/subnets{?name,type,ip,endip,tag,catype,cavalue}]
+## Subnet list [/subnets{?name,type,ip,endip,tag,catype,cavalue,filter}]
 
 ### List all subnets [GET]
 
@@ -60,6 +60,7 @@ List all subnets in ONA. Optionally provide search parameters to narrow the retu
   + tag: `mytag,tag2` (optional) - One or more tags to match comma separated.
   + catype: `nmap_scan` (optional) - Subnet with a custom attribute type matching string.
   + cavalue: `Y` (optional) - Subnet with a custom attribute value matching string.
+  + filter: `id,name` (optional) - Filter subnet array to include only keys listed in this filter. Comma separated list.
 
 + Response 200 (application/json;charset=utf-8)
   + Attributes (Subnets)
@@ -82,7 +83,7 @@ Creates a new subnet
 
         {"status_code": 1, "status_msg": "Token Issue: some sort of error" }
 
-## Subnet [/subnets/{subnet}{?verbose}]
+## Subnet [/subnets/{subnet}{?verbose,filter}]
 Perform operations on a specific subnet
 
 ### List single subnet [GET]
@@ -91,6 +92,7 @@ Return information about a single subnet.  Optionally get a verbose output of in
 + Parameters
   + subnet: `192.168.0.0` - Name or IP of a subnet.
   + verbose: `Y` (optional) - Display more detailed information about the subnet.
+  + filter: `id,name` (optional) - Filter subnet array to include only keys listed in this filter. Comma separated list.
 
 + Response 200 (application/json;charset=utf-8)
   + Attributes (Subnets)
