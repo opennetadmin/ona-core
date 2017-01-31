@@ -2,67 +2,33 @@
 
 
 /*
-
 some future ideas:
-* symlink an index.php to the rest.php 
 * make the GUI itself just a plugin to ona-core.  if it is installed the rest.php file will
   take you to it instead of the api-docs.  this may mean its better to just forgo the symlink and rest.php name
 * what does this mean for a stand alone GUI install?  it would need to be in /opt/ona-core/www/local/plugins/gui?? or can it stand on its own with a vhost config
-
-
 */
 
 // Load our initialization library
 require_once(__DIR__.'/../lib/initialize.php');
 
-
-/*
-
-POST = add, update
-GET = display
-DELETE = del
-
-PUT = full resource update.. all fields.. not how things function without a big rewrite
-PATCH = modify (or put but patch seems better)
-
-Both of these options are not possible without big rewrite.  also slim does not pass requestbody for these two, only post.  
-I have chosen to use POST for everything, as we are simply passing input to my modules.
-its not strictly restful but apparently few actually are.  I will compromize here for now.
-
-All types should return http 400 'bad request' on an error.  I think all errors should? basically anything not a 0 status.
-
-a post that adds a resource should return the data it just created, it should also return a URL(s) that could be used to do a GET on what was just created.  it should also return an HTTP 201 which means successful create.
-
-a post that updates a resource should return 
-
-*/
-
+// Load up our ONA namespace bits
 use ONA\controllers;
 use ONA\auth;
-
 
 // Initiate slim
 $app = new \Slim\App($slimconfig);
 
-
-
 // Load all the dynamic plugin controllers
+// This must be done after $app is initialized as a new Slim App
 $plugin_controllers = plugin_list('controller');
 foreach ($plugin_controllers as $p) {
   require_once($p['path']);
 }
 
-
-
-
-
-// Make the root path redirect to document
-$app->get('/', function ($request, $response) {
-  return $response->withRedirect ((string)($request->getUri()->withPath('/api-doc.html')));
+// Make the root path and base version paths redirect to documention
+$app->get('/{version:|v1|v2}', function ($request, $response) {
+  return $response->withRedirect ((string)($request->getUri()->withPath('/docs.html')));
 });
-
-
-
 
 /*
 * Hey, its login time

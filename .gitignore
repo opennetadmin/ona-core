@@ -5,9 +5,6 @@ vendor
 VERSION
 *.swp
 
-# mostly temp ignore of my gui link back to old ona interface
-www/gui
-
 www/local
 !www/local/plugins/README.md
 !www/local/plugins/index.php
