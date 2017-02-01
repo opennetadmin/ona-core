@@ -196,28 +196,8 @@ function subnet_display($options="") {
 
     // Return the usage summary if we need to
     if (!$options['subnet']) {
-      // NOTE: Help message lines should not exceed 80 characters for proper display on a console
-      $self['error'] = 'ERROR => Insufficient parameters';
-      return(array(1,
-<<<EOM
-
-subnet_display-v{$version}
-Displays an subnet record from the database
-
-  Synopsis: subnet_display [KEY=VALUE] ...
-
-  Required:
-    subnet=[ID|IP]               display subnet by search string
-
-  Optional:
-    verbose=[yes|no]              display additional info (yes)
-
-  Notes:
-    * An error is returned if search string returns more than one subnet
-    * IP can be in dotted, numeric, or IPv6 format
-\n
-EOM
-        ));
+      $self['error'] = 'Insufficient parameters';
+      return(array(1,$self['error']));
     }
 
     // They provided a subnet ID or IP address
@@ -237,7 +217,9 @@ EOM
     $subnet['ip_mask_text'] = ip_mangle($subnet['ip_mask'], 'dotted');
     $subnet['ip_mask_cidr'] = ip_mangle($subnet['ip_mask'], 'cidr');
 
-    $options['verbose'] = sanitize_YN($options['verbose'], 'N');
+    if (isset($options['verbose']))
+      $options['verbose'] = sanitize_YN($options['verbose'], 'N');
+
     if ($options['verbose'] == 'Y') {
       // Tag records
       list($status, $rows, $tags) = db_get_records($onadb, 'tags', array('type' => 'subnet', 'reference' => $subnet['id']));
@@ -314,33 +296,13 @@ function subnet_add($options="") {
     $version = '2.00';
 
     // Return the usage summary if we need to
-    if (!($options['ip'] and
-          $options['netmask'] and
-          $options['type'] and
-          $options['name'])
+    if (!(isset($options['ip']) and
+          isset($options['netmask']) and
+          isset($options['type']) and
+          isset($options['name']))
        ) {
-        // NOTE: Help message lines should not exceed 80 characters for proper display on a console
-        $self['error'] = 'ERROR => Insufficient parameters';
-        return(array(1,
-<<<EOM
-
-subnet_add-v{$version}
-Adds a new subnet (subnet) record
-
-  Synopsis: subnet_add [KEY=VALUE] ...
-
-  Required:
-    name=TEXT               subnet name (i.e. "LAN-1234")
-    ip=ADDRESS              dotted (10.0.0.0), IPv6, or numeric subnet address
-    netmask=MASK            dotted (255.0.0.0), CIDR (/8), or numeric netmask
-    type=TYPE               subnet type name or id
-
-  Optional:
-    vlan=VLAN               vlan name, number
-    campus=CAMPUS           vlan campus name or id to help identify vlan
-\n
-EOM
-        ));
+        $self['error'] = 'Insufficient parameters';
+        return(array(1,$self['error']));
     }
 
     //
@@ -561,39 +523,16 @@ function subnet_modify($options="") {
     $version = '2.00';
 
     // Return the usage summary if we need to
-    if (!$options['subnet'] or
-        !($options['set_ip'] or
-          $options['set_netmask'] or
-          $options['set_type'] or
-          $options['set_name'] or
+    if (!isset($options['subnet']) or
+        !(isset($options['set_ip']) or
+          isset($options['set_netmask']) or
+          isset($options['set_type']) or
+          isset($options['set_name']) or
           array_key_exists('set_vlan', $options) or
-          $options['set_security_level'])
+          isset($options['set_security_level']))
        ) {
-        // NOTE: Help message lines should not exceed 80 characters for proper display on a console
-        $self['error'] = 'ERROR => Insufficient parameters';
-        return(array(1,
-<<<EOM
-
-subnet_modify-v{$version}
-Modify a subnet (subnet) record
-
-  Synopsis: subnet_modify [KEY=VALUE] ...
-
-  Where:
-    subnet=[ID|IP]           select subnet by search string
-
-  Update:
-    set_ip=IP                 change subnet "subnet" address
-    set_netmask=MASK          change subnet netmask
-    set_name=TEXT      change subnet name (i.e. "LAN-1234")
-    set_type=TYPE             change subnet type by name or id
-    set_vlan=VLAN             change vlan by name, number
-    campus=CAMPUS             vlan campus name or id to help identify vlan
-    set_security_level=LEVEL  numeric security level ({$conf['ona_lvl']})
-
-\n
-EOM
-        ));
+        $self['error'] = 'Insufficient parameters';
+        return(array(1,$self['error']));
     }
 
     $check_boundaries = 0;
@@ -875,25 +814,9 @@ function subnet_del($options="") {
     $options = parse_options($options);
 
     // Return the usage summary if we need to
-    if (!$options['subnet'] ) {
-        // NOTE: Help message lines should not exceed 80 characters for proper display on a console
-        $self['error'] = 'ERROR => Insufficient parameters';
-        return(array(1,
-<<<EOM
-
-subnet_del-v{$version}
-Deletes a subnet (subnet) from the database
-
-  Synopsis: subnet_del [KEY=VALUE] ...
-
-  Required:
-    subnet=IP or ID              select subnet by search string
-
-  Optional:
-    commit=[yes|no]               commit db transaction (no)
-\n
-EOM
-        ));
+    if (!isset($options['subnet']) ) {
+        $self['error'] = 'Insufficient parameters';
+        return(array(1,$self['error']));
     }
 
 
@@ -1081,20 +1004,13 @@ function subnet_nextip($options="") {
 
     printmsg('Called with options: ('.implode (";",$options).')', 'info');
 
-    // Parse incoming options string to an array
-    $options = parse_options($options);
-
-    // Sanitize options[commit] (default is no)
-    $options['commit'] = sanitize_YN($options['commit'], 'N');
-
     // Return the usage summary if we need to
-    if (!$options['subnet'] ) {
-        // NOTE: Help message lines should not exceed 80 characters for proper display on a console
-        $self['error'] = 'ERROR => Insufficient parameters';
+    if (!isset($options['subnet'])) {
+        $self['error'] = 'Insufficient parameters';
         return(array(1,
 <<<EOM
 
-subnet_del-v{$version}
+subnet_nextip-v{$version}
 Return the next available IP address on a subnet.
 
   Synopsis: subnet_nextip [KEY=VALUE] ...
