@@ -142,10 +142,10 @@ function subnets($options="") {
       $subnet['ip_mask_text'] = ip_mangle($subnet['ip_mask'], 'dotted');
       $subnet['ip_mask_cidr'] = ip_mangle($subnet['ip_mask'], 'cidr');
 
-      // Reduce our array using the filter
-      if (isset($options['filter'])) {
-        $filter = explode(',', $options['filter']);
-        $subnet = array_intersect_key($subnet, array_flip($filter));
+      // Select just the fields requested
+      if (isset($options['fields'])) {
+        $fields = explode(',', $options['fields']);
+        $subnet = array_intersect_key($subnet, array_flip($fields));
       }
 
       ksort($subnet);
@@ -247,10 +247,10 @@ function subnet_display($options="") {
     unset($subnet['network_role_id']);
     unset($subnet['vlan_id']);
 
-    // Reduce our array using the filter
-    if (isset($options['filter'])) {
-      $filter = explode(',', $options['filter']);
-      $subnet = array_intersect_key($subnet, array_flip($filter));
+    // Select just the fields requested
+    if (isset($options['fields'])) {
+      $fields = explode(',', $options['fields']);
+      $subnet = array_intersect_key($subnet, array_flip($fields));
     }
 
     ksort($subnet);
