@@ -26,6 +26,9 @@ class login {
 
     // Get the parameters sent in
     $query = $request->getQueryParams();
+    // if nothing, check the body
+    if (!$query['user'])
+      $query = $request->getParsedBody();
 
     // Perform the actual authentication of user/pass
     list($status,$authmsg) = get_authentication($query['user'],$query['pass']);
