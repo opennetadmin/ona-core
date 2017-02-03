@@ -101,6 +101,68 @@ Return information about a single subnet.  Optionally get a verbose output of in
 
         {"status_code": 1, "status_msg": "Token Issue: some sort of error" }
 
+### Delete single subnet [DELETE]
+Delete a subnet
+
++ Parameters
+  + subnet: `192.168.0.0` - Name or IP of a subnet.
+
++ Response 204 (application/json;charset=utf-8)
+
+# Group Domains
+
+## Domain list [/domains{?name,fields}]
+
+### List all domains [GET]
+List all domains
+
++ Parameters
+  + fields: `id,name` (optional) - A comma separated list of specific result fields to return.
+
++ Response 200 (application/json;charset=utf-8)
+  + Attributes (Subnets)
+
++ Response 403 (application/json;charset=utf-8)
+
+        {"status_code": 1, "status_msg": "Token Issue: some sort of error" }
+
+### Create a new domain [POST]
+
+Creates a new domain
+
++ Request (application/json)
+  + Attributes (Domains)
+
++ Response 201 (application/json;charset=utf-8)
+  + Attributes (Domains)
+
++ Response 403 (application/json;charset=utf-8)
+
+        {"status_code": 1, "status_msg": "Token Issue: some sort of error" }
+
+## Domain [/domains/{domain}{?fields}]
+Perform operations on a specific domain
+
+### List single domain [GET]
+Return information about a single domain.
+
++ Parameters
+  + domain: `example.com` - Name of domain.
+  + fields: `id,name` (optional) - A comma separated list of specific result fields to return.
+
++ Response 200 (application/json;charset=utf-8)
+  + Attributes (Domains)
+
++ Response 403 (application/json;charset=utf-8)
+
+### Delete single domain [DELETE]
+Delete a domain
+
++ Parameters
+  + domain: `example.com` - Name or ID of a domain.
+
++ Response 204 (application/json;charset=utf-8)
+
 # Data Structures
 
 ## `Status` (object)
@@ -129,3 +191,23 @@ Return information about a single subnet.  Optionally get a verbose output of in
   + netmask: `255.255.255.0` (string) - IP netmask in dotted or CIDR format
   + vlan: `vlan001` (string, optional) -  Existing vlan name, number to associate this subnet with
   + campus: `CAMPUS` (string, optional) - VLAN campus name or id that `vlan` is assigned to
+
+## `Domains` (object)
+  + include Status
+  + subnets (array[Domain])
+
+## `Domain` (object)
+  + admin_email: `domains@example.com` (string) - Admin email used for SOA record
+  + ctime: `2017-02-02 15:31:47` (string) - Create time
+  + default_ttl: `86400` (string) - Default time to live used for SOA record
+  + expiry: `1048576` (number) - Domain expire time in seconds, used for SOA record
+  + fqdn: `domaintest.com` (string) - Domain fully quailified name
+  + id: `60` (string) - Database uniqe ID
+  + minimum: `2560` (number) - Domain expire time in seconds, used for SOA record
+  + mtime: `2017-02-02 15:31:47` (string) - Modify time
+  + name: `domaintest.com` (string) - Domain name
+  + parent_id: `0` (string) - Database uniqe ID for parent domain record
+  + primary_master: `ns1.example.com` (string) - Primary master name server to serve this domain
+  + refresh: `16384` (number) - Domain expire time in seconds, used for SOA record
+  + retry: `2048` (number) - Domain expire time in seconds, used for SOA record
+  + serial: `22233221` (number) - Domain expire time in seconds, used for SOA record

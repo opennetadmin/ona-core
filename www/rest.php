@@ -61,22 +61,16 @@ $app->group('/v1', function () {
       $this->map(['GET', 'DELETE', 'POST'], '/dhcpoption', 'ONA\controllers\subnets:dhcp');
     });
   });
-/*
-  $this->group('/hosts', function () {
-    new ONA\controllers\hosts($this);
-    $this->map(['GET', 'POST'], '', 'ONA\controllers\hosts:Any');
 
-    $this->group('/{host}', function () {
-      $this->map(['GET', 'DELETE', 'POST'], '', 'ONA\controllers\hosts:Specific');
-      $this->map(['GET', 'DELETE', 'POST'], '/tags', 'ONA\controllers\hosts:tags');
-      // This is an alt method for tags.. seems 'simpler'? decide if we keep it. not 'consistant'
-     # $this->map(['GET', 'DELETE', 'POST'], '/tags/{name}', 'ONA\controllers\hosts:tags');
-      $this->map(['GET', 'DELETE', 'POST'], '/ca', 'ONA\controllers\hosts:ca');
-      $this->map(['GET', 'DELETE', 'POST'], '/dhcpserver', 'ONA\controllers\hosts:dhcp');
-      $this->map(['GET', 'DELETE', 'POST'], '/dhcpoption', 'ONA\controllers\hosts:dhcp');
+  $this->group('/domains', function () {
+    new ONA\controllers\domains($this);
+    $this->map(['GET', 'POST'], '', 'ONA\controllers\domains:Any');
+
+    $this->group('/{domain}', function () {
+      $this->map(['GET', 'DELETE', 'POST'], '', 'ONA\controllers\domains:Specific');
     });
   });
-*/
+
 })->add(new ONA\auth\tokenauth());
  
 // Run our slim app
