@@ -27,10 +27,16 @@ Usage Examples
     touch ~/.onatoken;chmod 600 ~/.onatoken
 * Tell this shell instance where the base API endpoint is that `resty` should use
     . resty http://localhost/rest.php/v1
+
 * Log in to get your token and store it in a secure place
     POST /login -q "user=admin&pass=admin"|jq -r .token > ~/.onatoken
 * Tell `resty` to send your token each time you make a call
     resty http://localhost/rest.php/v1 -H "Authorization: $(cat ~/.onatoken)"
+
+* A short form of login without using a local file is this. It likely assumes you have already have run dotted in resty and set a base url.. this would be for re-login?
+    resty http://localhost/rest.php/v1 -H "Authorization: $(POST /login -q "user=admin&pass=admin"|jq -r .token)"
+
+
 * Get a list of all the subnets and pretty print it
     GET /subnets|jq
 * Get a list of all subnets but only return the id and name for each one.

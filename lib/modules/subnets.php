@@ -34,8 +34,12 @@ function get_subnet_usage($subnet_id) {
 }
 
 
+/////////////////////
 
+// Return subnets from the database
+// Allows filtering and other options to narrow the data down
 
+/////////////////////
 function subnets($options="") {
     global $self, $onadb;
     printmsg('Called with options: ('.implode (";",$options).')', 'info');
@@ -1094,11 +1098,3 @@ EOM
 
 
 }
-
-
-
-
-
-
-
-?>
