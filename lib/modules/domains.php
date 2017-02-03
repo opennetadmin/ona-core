@@ -42,7 +42,7 @@ function domain_add($options="") {
     if ( !(
                                 (isset($options['name']))
                                  or
-                                (isset($options['admin']) or isset($options['ptr']) or isset($options['primary_master']))
+                                (isset($options['admin_email']) or isset($options['ptr']) or isset($options['primary_master']))
                               )
         )
     {
@@ -76,7 +76,7 @@ EOM
     }
 
     // Use default if something was not passed on command line
-    if (isset($options['admin']))   { $admin   = $options['admin'];  } else { $admin   = $conf['dns_admin_email'];   }
+    if (isset($options['admin_email']))   { $admin   = $options['admin_email'];  } else { $admin   = $conf['dns_admin_email'];   }
     if (isset($options['primary_master'])) { $primary = $options['primary_master'];} else { $primary = $conf['dns_primary_master'];  }
     if (isset($options['refresh'])) { $refresh = $options['refresh'];} else { $refresh = $conf['dns_refresh']; }
     if (isset($options['retry']))   { $retry   = $options['retry'];  } else { $retry   = $conf['dns_retry'];   }
@@ -87,8 +87,8 @@ EOM
     $options['name'] = trim($options['name']);
     if (isset($options['primary_master']))
       $options['primary_master'] = trim($options['primary_master']);
-    if (isset($options['admin']))
-      $options['admin'] = trim($options['admin']);
+    if (isset($options['admin_email']))
+      $options['admin_email'] = trim($options['admin_email']);
 
     // Setup array for searching existing domains
     $exist_domain = array('name' => $options['name']);
@@ -371,13 +371,13 @@ function domain_modify($options="") {
     global $conf, $self, $onadb;
 
     // Version - UPDATE on every edit!
-    $version = '1.05';
+    $version = '2.00';
 
     // Return the usage summary if we need to
     if (!(
           (isset($options['domain']))
             and
-          (isset($options['set_admin']) or
+          (isset($options['set_admin_email']) or
            isset($options['set_name']) or
            isset($options['set_primary_master']) or
            isset($options['set_refresh']) or
@@ -418,9 +418,12 @@ EOM
     }
 
     $options['domain'] = trim($options['domain']);
-    $options['set_name'] = trim($options['set_name']);
-    $options['set_parent'] = trim($options['set_parent']);
-    $options['set_admin'] = trim($options['set_admin']);
+    if (isset($options['set_name']))
+      $options['set_name'] = trim($options['set_name']);
+    if (isset($options['set_parent']))
+      $options['set_parent'] = trim($options['set_parent']);
+    if (isset($options['set_admin_email']))
+      $options['set_admin_email'] = trim($options['set_admin_email']);
 
     $domainsearch = array();
     // setup a domain search based on name or id
@@ -435,20 +438,19 @@ EOM
 
     // Test to see that we were able to find the specified record
     if (!$entry['id']) {
-        printmsg("DEBUG => Unable to find a domain record using ID {$options['domain']}!",3);
-        $self['error'] = "ERROR => Unable to find the domain record using {$options['domain']}!";
-        return(array(4, $self['error']. "\n"));
+        $self['error'] = "Unable to find the domain record using {$options['domain']}!";
+        printmsg($self['error'],'error');
+        return(array(4, $self['error']));
     }
 
-    printmsg("DEBUG => domain_modify(): Found entry, {$entry['name']}", 3);
+    printmsg("Found entry, {$entry['name']}", 'debug');
 
 
     // This variable will contain the updated info we'll insert into the DB
     $SET = array();
 
 
-
-    if (array_key_exists('set_parent',$options) and $options['set_parent']) {
+    if (array_key_exists('set_parent',$options) and isset($options['set_parent'])) {
         $parentsearch = array();
         // setup a domain search based on name or id
         if (is_numeric($options['set_parent'])) {
@@ -461,9 +463,9 @@ EOM
         list($status, $rows, $domain) = ona_get_domain_record($parentsearch);
 
         if (!$domain['id']) {
-            printmsg("DEBUG => The parent domain specified ({$options['set_parent']}) does not exist!",3);
-            $self['error'] = "ERROR => The parent domain specified ({$options['set_parent']}) does not exist!";
-            return(array(2, $self['error'] . "\n"));
+            $self['error'] = "The parent domain specified ({$options['set_parent']}) does not exist!";
+            printmsg($self['error'],'error');
+            return(array(2, $self['error']));
         }
 
         if ($entry['parent_id'] != $domain['id']) $SET['parent_id'] = $domain['id'];
@@ -473,7 +475,7 @@ EOM
 
     // FIXME: currently renaming zones may not work when using
     // parent zones. https://github.com/opennetadmin/ona/issues/36
-    if (is_string($options['set_name'])) {
+    if (isset($options['set_name']) and is_string($options['set_name'])) {
         // trim leading and trailing whitespace from 'value'
         if ($entry['name'] != trim($options['set_name'])) $SET['name'] = trim($options['set_name']);
 
@@ -482,21 +484,21 @@ EOM
 
         // Test to see that the new entry isnt already used
         if ($domain['id'] and $domain['id'] != $entry['id']) {
-            printmsg("DEBUG => The domain specified ({$options['set_name']}) already exists!",3);
-            $self['error'] = "ERROR => The domain specified ({$options['set_name']}) already exists!";
-            return(array(6, $self['error']. "\n"));
+            $self['error'] = "The domain specified ({$options['set_name']}) already exists!";
+            printmsg($self['error'],'error');
+            return(array(6, $self['error']));
         }
 
     }
 
     // define the remaining entries
-    if ($options['set_primary_master'] and $entry['primary_master'] != $options['set_primary_master']) $SET['primary_master'] = trim($options['set_primary_master']);
-    if ($options['set_admin'] and $entry['admin_email'] != $options['set_admin'])   $SET['admin_email'] = $options['set_admin'];
-    if ($options['set_refresh'] and $entry['refresh'] != $options['set_refresh']) $SET['refresh']     = $options['set_refresh'];
-    if ($options['set_retry'] and $entry['retry'] != $options['set_retry'])   $SET['retry']       = $options['set_retry'];
-    if ($options['set_expiry'] and $entry['expiry'] != $options['set_expiry'])  $SET['expiry']      = $options['set_expiry'];
-    if ($options['set_minimum'] and $entry['minimum'] != $options['set_minimum']) $SET['minimum']     = $options['set_minimum'];
-    if ($options['set_ttl'] and $entry['default_ttl'] != $options['set_ttl'])     $SET['default_ttl'] = $options['set_ttl'];
+    if (isset($options['set_primary_master']) and $entry['primary_master'] != $options['set_primary_master']) $SET['primary_master'] = trim($options['set_primary_master']);
+    if (isset($options['set_admin_email']) and $entry['admin_email'] != $options['set_admin_email'])   $SET['admin_email'] = $options['set_admin_email'];
+    if (isset($options['set_refresh']) and $entry['refresh'] != $options['set_refresh']) $SET['refresh']     = $options['set_refresh'];
+    if (isset($options['set_retry']) and $entry['retry'] != $options['set_retry'])   $SET['retry']       = $options['set_retry'];
+    if (isset($options['set_expiry']) and $entry['expiry'] != $options['set_expiry'])  $SET['expiry']      = $options['set_expiry'];
+    if (isset($options['set_minimum']) and $entry['minimum'] != $options['set_minimum']) $SET['minimum']     = $options['set_minimum'];
+    if (isset($options['set_ttl']) and $entry['default_ttl'] != $options['set_ttl'])     $SET['default_ttl'] = $options['set_ttl'];
 
 
 // FIXME: MP for now this is removed.  it is a chicken/egg issue on setting this name
@@ -507,35 +509,20 @@ EOM
         list($status, $rows, $host) = ona_find_host($SET['primary_master']);
 
         if (!$host['id']) {
-            printmsg("DEBUG => The primary master host specified ({$SET['primary_master']}) does not exist!",3);
-            $self['error'] = "ERROR => The primary master host specified ({$SET['primary_master']}) does not exist!";
+            $self['error'] = "The primary master host specified ({$SET['primary_master']}) does not exist!";
+            printmsg($self['error'],'error');
             return(array(2, $self['error'] . "\n"));
         }
 
     }
 */
 
-    // come up with a serial_number
-    // Calculate a serial based on time
-    // concatinate year,month,day,percentage of day
-    // FIXME: MP this needs more work to be more accurate.  maybe not use date.. pretty limiting at 10 characters as suggested here: http://www.zytrax.com/books/dns/ch8/soa.html
-    // for now I'm going with non zero padded(zp) month,zp day, zp hour, zp minute, zp second.  The only issue I can see at this point with this is when it rolls to january..
-    // will that be too much of an increment for it to properly zone xfer?  i.e.  1209230515 = 12/09 23:05:15 in time format
-
-    // MP: FOR NOW SERIAL WONT EVER GET USED...  LEFT IT IN HERE FOR AWHILE THOUGH
-    //$SET['serial'] = date('njHis');
-
-    // Serial numbers are now built based on the timeformat
-
-
-
-
 
     // Check permissions
     if (!auth('advanced')) {
         $self['error'] = "Permission denied!";
-        printmsg($self['error'], 0);
-        return(array(10, $self['error'] . "\n"));
+        printmsg($self['error'], 'notice');
+        return(array(10, $self['error']));
     }
 
     // Get the domain record before updating (logging)
@@ -543,45 +530,43 @@ EOM
 
     // Update the record
     if (count($SET) > 0) {
-    list($status, $rows) = db_update_record($onadb, 'domains', array('id' => $entry['id']), $SET);
-    if ($status or !$rows) {
-        $self['error'] = "ERROR => domain_modify() SQL Query failed: {$self['error']}";
-        printmsg($self['error'],0);
-        return(array(6, $self['error'] . "\n"));
+      list($status, $rows) = db_update_record($onadb, 'domains', array('id' => $entry['id']), $SET);
+      if ($status or !$rows) {
+        $self['error'] = "SQL Query failed: {$self['error']}";
+        printmsg($self['error'],'error');
+        return(array(6, $self['error']));
+      }
     }
-}
+
     // Get the entry again to display details
     list($status, $rows, $new_domain) = ona_get_domain_record(array('id'=>$entry['id']));
-
-
-    // Return the success notice
-    $self['error'] = "INFO => Domain UPDATED:{$entry['id']}: {$new_domain['name']}";
-
-    $log_msg = "INFO => Domain UPDATED:{$entry['id']}: ";
-    $more="";
-    foreach(array_keys($original_domain) as $key) {
-        if($original_domain[$key] != $new_domain[$key]) {
-            $log_msg .= $more . $key . "[" .$original_domain[$key] . "=>" . $new_domain[$key] . "]";
-            $more= ";";
-        }
-    }
-
 
     // TRIGGER:Now that we have updated the domain, lets mark the domain on all the servers for a rebuild to pick up any new SOA info.
     list($status, $rows) = db_update_record($onadb, 'dns_server_domains', array('domain_id' => $entry['id']), array('rebuild_flag' => 1));
     if ($status) {
-        $self['error'] = "ERROR => domain_modify() Unable to update rebuild flags for domain. SQL Query failed: {$self['error']}";
-        printmsg($self['error'],0);
-        return(array(7, $self['error'] . "\n"));
+        $self['error'] = "Unable to update rebuild flags for domain. SQL Query failed: {$self['error']}";
+        printmsg($self['error'],'error');
+        return(array(7, $self['error']));
+    }
+
+    $more='';
+    $log_msg='';
+    foreach(array_keys($original_domain) as $key) {
+        if($original_domain[$key] != $new_domain[$key]) {
+            $log_msg .= $more . $key . "[" .$original_domain[$key] . "=>" . $new_domain[$key] . "]";
+            $more= ';';
+        }
     }
 
     // only print to logfile if a change has been made to the record
     if($more != '') {
-        printmsg($self['error'], 0);
-        printmsg($log_msg, 0);
+      printmsg("Domain UPDATED:{$entry['id']}: ". $log_msg, 'notice');
+    } else {
+      $log_msg = "Domain UPDATED:{$entry['id']}: Update attempt produced no changes.";
+      printmsg($log_msg, 'notice');
     }
 
-    return(array(0, $self['error'] . "\n"));
+    return(array(0, $log_msg));
 }
 
 
