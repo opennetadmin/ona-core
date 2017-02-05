@@ -1549,7 +1549,7 @@ if ($foundone) $rows = 1;
 ///////////////////////////////////////////////////////////////////////
 function ona_find_dns_record($search="",$type='',$int_id=0) {
     global $conf, $self, $onadb;
-    printmsg("DEBUG => ona_find_dns_record({$search}) called", 3);
+    printmsg("ona_find_dns_record({$search}) called", 'debug');
     $type   = strtoupper($type);
     $search = strtolower($search);
 
@@ -1557,7 +1557,7 @@ function ona_find_dns_record($search="",$type='',$int_id=0) {
     if (is_numeric($search)) {
         list($status, $rows, $dns) = ona_get_dns_record(array('id' => $search));
         if ($rows) {
-            printmsg("DEBUG => ona_find_dns_record({$search}) called, found: {$dns['fqdn']}({$dns['type']})", 3);
+            printmsg("Found: {$dns['fqdn']}({$dns['type']})", 'debug');
             return(array($status, $rows, $dns));
         }
     }

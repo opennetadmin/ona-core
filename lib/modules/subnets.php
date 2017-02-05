@@ -162,6 +162,8 @@ function subnets($options="") {
       $i++;
     }
 
+    $text_array['count'] = count($subnets);
+
     // Return the success notice
     return(array(0, $text_array));
 

@@ -71,6 +71,15 @@ $app->group('/v1', function () {
     });
   });
 
+  $this->group('/dns_records', function () {
+    new ONA\controllers\dns_records($this);
+    $this->map(['GET', 'POST'], '', 'ONA\controllers\dns_records:Any');
+
+    $this->group('/{dns_record}', function () {
+      $this->map(['GET', 'DELETE', 'POST'], '', 'ONA\controllers\dns_records:Specific');
+    });
+  });
+
 })->add(new ONA\auth\tokenauth());
  
 // Run our slim app

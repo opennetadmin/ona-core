@@ -172,7 +172,7 @@ EOM
     // concatinate year,month,day,percentage of day
     // FIXME: MP this needs more work to be more accurate.  maybe not use date.. pretty limiting at 10 characters as suggested here: http://www.zytrax.com/books/dns/ch8/soa.html
     // for now I'm going with non zero padded(zp) month,zp day, zp hour, zp minute, zp second.  The only issue I can see at this point with this is when it rolls to january..
-    // will that be too much of an increment for it to properly zone xfer?  i.e.  1209230515 = 12/09 23:05:15 in time format
+    // will that be too much of an increment for it to properly zone xfer?  i.e.  1209230515 = 12/09 23:05:15 in time options
 
     // MP: FOR NOW SERIAL WONT EVER GET USED...  LEFT IT IN HERE FOR AWHILE THOUGH
     $serial_number = date('njHis');
@@ -560,12 +560,12 @@ EOM
 
     // only print to logfile if a change has been made to the record
     if($more != '') {
-      printmsg("Domain UPDATED:{$entry['id']}: ". $log_msg, 'notice');
+      $log_msg = "Domain UPDATED:{$entry['id']}: {$log_msg}";
     } else {
       $log_msg = "Domain UPDATED:{$entry['id']}: Update attempt produced no changes.";
-      printmsg($log_msg, 'notice');
     }
 
+    printmsg($log_msg, 'notice');
     return(array(0, $log_msg));
 }
 
@@ -639,4 +639,87 @@ function domain_display($options="") {
 
     // Return 
     return(array(0, $text_array));
+}
+
+
+
+/////////////////////
+
+// Return domains from the database
+// Allows filtering and other options to narrow the data down
+
+/////////////////////
+function domains($options="") {
+    global $self, $onadb;
+    printmsg('Called with options: ('.implode (";",$options).')', 'info');
+
+    // Version - UPDATE on every edit!
+    $version = '2.00';
+
+    $text_array = array();
+    $text_array['module_version'] = $version;
+
+
+
+    // Start building the "where" clause for the sql query to find the records to display
+    // DISPLAY ALL
+    $where = "id > 0";
+    $and = " AND ";
+
+    // enable or disable wildcards
+    $wildcard = '';
+#    $wildcard = '%';
+#    if (isset($options['nowildcard'])) $wildcard = '';
+
+
+
+    // RECORD ID
+    if (isset($options['id'])) {
+        $where .= $and . "id = " . $onadb->qstr($options['record_id']);
+        $and = " AND ";
+    }
+
+    // note
+    if (isset($options['notes'])) {
+        $where .= $and . "notes LIKE " . $onadb->qstr($wildcard.$options['notes'].$wildcard);
+        $and = " AND ";
+    }
+
+    // NAME
+    if (isset($options['name'])) {
+        $where .= $and . "id IN (SELECT id " .
+                                "  FROM domains " .
+                                "  WHERE name LIKE " . $onadb->qstr($wildcard.$options['name'].$wildcard) ." )";
+        $and = " AND ";
+    }
+
+
+
+
+    list ($status, $rows, $domains) = db_get_records( $onadb, 'domains', $where);
+
+    if (!$rows) {
+      $text_array['status_msg'] = "No domain records were found";
+      return(array(0, $text_array));
+    }
+
+    $i=0;
+    foreach ($domains as $domain) {
+      // Select just the fields requested
+      if (isset($options['fields'])) {
+        $fields = explode(',', $options['fields']);
+        $subnet = array_intersect_key($subnet, array_flip($fields));
+      }
+
+      ksort($domain);
+      $text_array['domains'][$i]=$domain;
+
+      $i++;
+    }
+
+    $text_array['count'] = count($domains);
+
+    // Return the success notice
+    return(array(0, $text_array));
+
 }

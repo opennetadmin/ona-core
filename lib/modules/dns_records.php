@@ -1,7 +1,4 @@
 <?php
-// DON'T put whitespace at the beginning or end of this file!!!
-
-
 
 
 
@@ -25,17 +22,11 @@ function dns_record_add($options="") {
     global $conf, $self, $onadb;
 
     // Version - UPDATE on every edit!
-    $version = '1.12';
-
-    printmsg("DEBUG => dns_record_add({$options}) called", 3);
-
-    // Parse incoming options string to an array
-    $options = parse_options($options);
+    $version = '2.00';
 
     // Return the usage summary if we need to
-    if ($options['help'] or !($options['name'] and $options['type']) ) {
-        // NOTE: Help message lines should not exceed 80 characters for proper display on a console
-        $self['error'] = 'ERROR => Insufficient parameters';
+    if (!(isset($options['name']) and isset($options['type'])) ) {
+        $self['error'] = 'Insufficient parameters';
         return(array(1,
 <<<EOM
 
@@ -108,15 +99,22 @@ primary name for a host should be unique in all cases I'm aware of
 */
 
     // Sanitize addptr.. set it to Y if it is not set
-    $options['addptr'] = sanitize_YN($options['addptr'], 'Y');
+    if (isset($options['addptr']))
+      $options['addptr'] = sanitize_YN($options['addptr'], 'Y');
 
     // clean up what is passed in
-    $options['ip'] = trim($options['ip']);
-    $options['pointsto'] = trim($options['pointsto']);
-    $options['name'] = trim($options['name']);
-    $options['domain'] = trim($options['domain']);
-    $options['txt'] = trim($options['txt']);
-    $options['view'] = trim($options['view']);
+    if (isset($options['ip']))
+      $options['ip'] = trim($options['ip']);
+    if (isset($options['pointsto']))
+      $options['pointsto'] = trim($options['pointsto']);
+    if (isset($options['name']))
+      $options['name'] = trim($options['name']);
+    if (isset($options['domain']))
+      $options['domain'] = trim($options['domain']);
+    if (isset($options['txt']))
+      $options['txt'] = trim($options['txt']);
+    if (isset($options['view']))
+      $options['view'] = trim($options['view']);
 
     // Check the date formatting etc
     if (isset($options['ebegin'])) {
@@ -150,7 +148,7 @@ primary name for a host should be unique in all cases I'm aware of
 
     // If we are specifically passing in a domain, use its value.  If we dont have a domain
     // then try to find it in the name that we are setting.
-    if($options['domain']) {
+    if(isset($options['domain'])) {
         // Find the domain name piece of $search
         list($status, $rows, $domain) = ona_find_domain($options['domain'],0);
     } else {
@@ -159,12 +157,12 @@ primary name for a host should be unique in all cases I'm aware of
 
     // Find the domain name piece of $search.
     if (!isset($domain['id'])) {
-        printmsg("ERROR => Unable to determine domain name portion of ({$options['name']})!", 3);
-        $self['error'] = "ERROR => Unable to determine domain name portion of ({$options['name']})!";
-        return(array(3, $self['error'] . "\n"));
+        $self['error'] = "Unable to determine domain name portion of ({$options['name']})!";
+        printmsg($self['error'], 'error');
+        return(array(3, $self['error']));
     }
 
-    printmsg("DEBUG => ona_find_domain({$options['name']}) returned: {$domain['fqdn']}", 3);
+    printmsg("ona_find_domain({$options['name']}) returned: {$domain['fqdn']}", 'debug');
 
     // Now find what the host part of $search is
     $hostname = str_replace(".{$domain['fqdn']}", '', $options['name']);
@@ -172,9 +170,9 @@ primary name for a host should be unique in all cases I'm aware of
     // Validate that the DNS name has only valid characters in it
     $hostname = sanitize_hostname($hostname);
     if (!$hostname) {
-        printmsg("ERROR => Invalid host name ({$options['name']})!", 3);
-        $self['error'] = "ERROR => Invalid host name ({$options['name']})!";
-        return(array(4, $self['error'] . "\n"));
+        $self['error'] = "Invalid host name ({$options['name']})!";
+        printmsg($self['error'], 'error');
+        return(array(4, $self['error']));
     }
 
     // If the hostname we came up with and the domain name are the same, then assume this is
@@ -182,21 +180,21 @@ primary name for a host should be unique in all cases I'm aware of
     if ($hostname == $domain['fqdn']) $hostname = '';
 
     // Debugging
-    printmsg("DEBUG => Using hostname: {$hostname} Domainname: {$domain['fqdn']}, Domain ID: {$domain['id']}", 3);
+    printmsg("Using hostname: {$hostname} Domainname: {$domain['fqdn']}, Domain ID: {$domain['id']}", 'debug');
 
 
     // If we are using anything but in-addr.arpa for PTR or NS records, fail out!
     if ((strpos($domain['fqdn'], "ip6.arpa") or strpos($domain['fqdn'], "in-addr.arpa")) and $options['type'] != 'PTR' and $options['type'] != 'NS') {
-        printmsg("ERROR => Only PTR and NS records should use in-addr.arpa or ip6.arpa domains!", 3);
-        $self['error'] = "ERROR => Only PTR and NS records should use in-addr.arpa or ip6.arpa domains!";
-        return(array(4, $self['error'] . "\n"));
+        $self['error'] = "Only PTR and NS records should use in-addr.arpa or ip6.arpa domains!";
+        printmsg($self['error'], 'error');
+        return(array(4, $self['error']));
     }
 
 
 
     // Gather DNS view information
     $add_pointsto_viewid = $add_viewid = 0;
-    if ($options['view']) {
+    if (isset($options['view'])) {
         if (is_numeric($options['view'])) {
             $viewsearch = array('id' => $options['view']);
         } else {
@@ -205,9 +203,9 @@ primary name for a host should be unique in all cases I'm aware of
         // find the view record,
         list($status, $rows, $dnsview) = ona_get_dns_view_record($viewsearch);
         if (!$rows) {
-            printmsg("ERROR => dns_record_add() Unable to find DNS view: {$options['view']}",3);
-            $self['error'] = "ERROR => dns_record_add() Unable to find DNS view: {$options['view']}.";
-            return(array(4, $self['error'] . "\n"));
+            $self['error'] = "Unable to find DNS view: {$options['view']}.";
+            printmsg($self['error'], 'error');
+            return(array(4, $self['error']));
         }
 
         $add_pointsto_viewid = $add_viewid = $dnsview['id'];
@@ -221,32 +219,32 @@ primary name for a host should be unique in all cases I'm aware of
     }
 
     // Set a message to display when using dns views
-    if ($conf['dns_views']) $viewmsg = ' Ensure you are selecting the proper DNS view for this record.';
+    if (isset($conf['dns_views'])) $viewmsg = ' Ensure you are selecting the proper DNS view for this record.';
 
     // Process A or AAAA record types
     if ($options['type'] == 'A' or $options['type'] == 'AAAA') {
         // find the IP interface record,
         list($status, $rows, $interface) = ona_find_interface($options['ip']);
         if (!$rows) {
-            printmsg("ERROR => dns_record_add() Unable to find existing IP interface: {$options['ip']}",3);
-            $self['error'] = "ERROR => dns_record_add() Unable to find IP interface: {$options['ip']}. A records must point to existing IP addresses. Please add an interface with this IP address first.";
-            return(array(4, $self['error'] . "\n"));
+            $self['error'] = "Unable to find IP interface: {$options['ip']}. A records must point to existing IP addresses. Please add an interface with this IP address first.";
+            printmsg($self['error'], 'error');
+            return(array(4, $self['error']));
         }
 
         // Validate that there isn't already any dns record named $hostname in the domain $domain_id.
         list($d_status, $d_rows, $d_record) = ona_get_dns_record(array('name' => $hostname, 'domain_id' => $domain['id'],'interface_id' => $interface['id'],'type' => 'A', 'dns_view_id' => $add_viewid));
         if ($d_status or $d_rows) {
-            printmsg("ERROR => Another DNS A record named {$hostname}.{$domain['fqdn']} with IP {$interface['ip_addr_text']} already exists!{$viewmsg}",3);
-            $self['error'] = "ERROR => Another DNS A record named {$hostname}.{$domain['fqdn']} with IP {$interface['ip_addr_text']} already exists!{$viewmsg}";
-            return(array(5, $self['error'] . "\n"));
+            $self['error'] = "Another DNS A record named {$hostname}.{$domain['fqdn']} with IP {$interface['ip_addr_text']} already exists!{$viewmsg}";
+            printmsg($self['error'], 'error');
+            return(array(5, $self['error']));
         }
 
         // Validate that there are no CNAMES already with this fqdn
         list($c_status, $c_rows, $c_record) = ona_get_dns_record(array('name' => $hostname, 'domain_id' => $domain['id'],'type' => 'CNAME','dns_view_id' => $add_viewid));
         if ($c_rows or $c_status) {
-            printmsg("ERROR => Another DNS CNAME record named {$hostname}.{$domain['fqdn']} already exists!{$viewmsg}",3);
-            $self['error'] = "ERROR => Another DNS CNAME record named {$hostname}.{$domain['fqdn']} already exists!{$viewmsg}";
-            return(array(5, $self['error'] . "\n"));
+            $self['error'] = "Another DNS CNAME record named {$hostname}.{$domain['fqdn']} already exists!{$viewmsg}";
+            printmsg($self['error'], 'error');
+            return(array(5, $self['error']));
         }
 
 
@@ -257,7 +255,7 @@ primary name for a host should be unique in all cases I'm aware of
         $add_dnsid = 0;
 
         // Dont print a dot unless hostname has a value
-        if ($hostname) $hostname = $hostname.'.';
+        if (isset($hostname)) $hostname = $hostname.'.';
 
         $info_msg = "{$hostname}{$domain['fqdn']} -> " . ip_mangle($interface['ip_addr'],'dotted');
 
@@ -266,9 +264,9 @@ primary name for a host should be unique in all cases I'm aware of
             // Check that no other PTR records are set up for this IP
             list($status, $rows, $record) = ona_get_dns_record(array('interface_id' => $interface['id'], 'type' => 'PTR','dns_view_id' => $add_viewid));
             if ($rows) {
-                printmsg("ERROR => Another DNS PTR record already exists for this IP interface!{$viewmsg}",3);
-                $self['error'] = "ERROR => Another DNS PTR record already exists for this IP interface!{$viewmsg}";
-                return(array(5, $self['error'] . "\n"));
+                $self['error'] = "Another DNS PTR record already exists for this IP interface!{$viewmsg}";
+                printmsg($self['error'], 'error');
+                return(array(5, $self['error']));
             }
         }
 
@@ -293,26 +291,26 @@ but you still want to reverse lookup all the other interfaces to know they are o
         // find the IP interface record,
         list($status, $rows, $interface) = ona_find_interface($options['ip']);
         if (!$rows) {
-            printmsg("ERROR => dns_record_add() Unable to find IP interface: {$options['ip']}",3);
-            $self['error'] = "ERROR => dns_record_add() Unable to find IP interface: {$options['ip']}. PTR records must point to existing IP addresses. Please add an interface with this IP address first.";
-            return(array(4, $self['error'] . "\n"));
+            $self['error'] = "Unable to find IP interface: {$options['ip']}. PTR records must point to existing IP addresses. Please add an interface with this IP address first.";
+            printmsg($self['error'], 'error');
+            return(array(4, $self['error']));
         }
 
 
         // Check that no other PTR records are set up for this IP
         list($status, $rows, $record) = ona_get_dns_record(array('interface_id' => $interface['id'], 'type' => 'PTR','dns_view_id' => $add_viewid));
         if ($rows) {
-            printmsg("ERROR => Another DNS PTR record already exists for this IP interface!{$viewmsg}",3);
-            $self['error'] = "ERROR => Another DNS PTR record already exists for this IP interface!{$viewmsg}";
-            return(array(5, $self['error'] . "\n"));
+            $self['error'] = "Another DNS PTR record already exists for this IP interface!{$viewmsg}";
+            printmsg($self['error'], 'error');
+            return(array(5, $self['error']));
         }
 
         // Find the dns record that it will point to
 
         list($status, $rows, $arecord) = ona_get_dns_record(array('name' => $hostname, 'domain_id' => $domain['id'],'interface_id' => $interface['id'], 'type' => 'A','dns_view_id' => $add_viewid));
         if ($status or !$rows) {
-            printmsg("ERROR => Unable to find DNS A record to point PTR entry to! Check that the IP you chose is associated with the name you chose.{$viewmsg}",3);
-            $self['error'] = "ERROR => Unable to find DNS A record to point PTR entry to! Check that the IP you chose is associated with the name you chose.{$viewmsg}";
+            $self['error'] = "Unable to find DNS A record to point PTR entry to! Check that the IP you chose is associated with the name you chose.{$viewmsg}";
+            printmsg($self['error'], 'error');
 
             // As a last resort just find a matching A record no matter the IP.  
             // This is for PTRs that point to an A record that uses a different IP (loopback example)
@@ -321,12 +319,12 @@ but you still want to reverse lookup all the other interfaces to know they are o
             // this is limiting in a way but allows cleaner data.
             list($status, $rows, $arecord) = ona_get_dns_record(array('name' => $hostname, 'domain_id' => $domain['id'], 'type' => 'A','dns_view_id' => $add_viewid));
             if (($rows > 1)) {
-                printmsg("ERROR => Unable to find a SINGLE DNS A record to point PTR entry to! In this case, you are only allowed to do this if there is one A record using this name.{$viewmsg}",3);
-                $self['error'] = "ERROR => Unable to find a SINGLE DNS A record to point PTR entry to! In this case, you are only allowed to do this if there is one A record using this name.{$viewmsg}";
+                $self['error'] = "Unable to find a SINGLE DNS A record to point PTR entry to! In this case, you are only allowed to do this if there is one A record using this name.{$viewmsg}";
+                printmsg($self['error'], 'error');
             }
 
             if ($rows != 1)
-                return(array(66, $self['error'] . "\n"));
+                return(array(66, $self['error']));
         }
 
 
@@ -341,15 +339,10 @@ but you still want to reverse lookup all the other interfaces to know they are o
         }
         // Find a pointer zone for this record to associate with.
         list($status, $rows, $ptrdomain) = ona_find_domain($ipflip.$arpa);
-//         if (!$ptrdomain['id']) {
-//             printmsg("ERROR => Unable to find a reverse pointer domain for this IP! Add at least the following DNS domain: {$octets[3]}.in-addr.arpa",3);
-//             $self['error'] = "ERROR => Unable to find a reverse pointer domain for this IP! Add at least the following DNS domain: {$octets[3]}.in-addr.arpa";
-//             return(array(5, $self['error'] . "\n"));
-//         }
-        if (!$ptrdomain['id']) {
-            printmsg("ERROR => This operation tried to create a PTR record that is the first in this address space.  You must first create at least the following DNS domain: {$octets[$octcount]}{$arpa}",3);
-            $self['error'] = "ERROR => This operation tried to create a PTR record that is the first in this address space.  You must first create at least the following DNS domain: {$octets[$octcount]}{$arpa}.  You could also create domains for deeper level reverse zones.";
-                return(array(9, $self['error'] . "\n"));
+        if (!isset($ptrdomain['id'])) {
+            $self['error'] = "This operation tried to create a PTR record that is the first in this address space.  You must first create at least the following DNS domain: {$octets[$octcount]}{$arpa}.  You could also create domains for deeper level reverse zones.";
+            printmsg($self['error'], 'error');
+            return(array(9, $self['error']));
         }
 
         // PTR records dont need a name set.
@@ -360,7 +353,7 @@ but you still want to reverse lookup all the other interfaces to know they are o
         $add_dnsid = $arecord['id'];
 
         // Dont print a dot unless hostname has a value
-        if ($hostname) $hostname = $hostname.'.';
+        if (isset($hostname)) $hostname = $hostname.'.';
 
         $info_msg = "{$ipflip}{$arpa} -> {$hostname}{$domain['fqdn']}";
 
@@ -399,44 +392,44 @@ complex DNS messes for themselves.
         // Determine the host and domain name portions of the pointsto option
         // Find the domain name piece of $search
         list($status, $rows, $pdomain) = ona_find_domain($options['pointsto']);
-        printmsg("DEBUG => ona_find_domain({$options['pointsto']}) returned: {$domain['fqdn']} for pointsto.", 3);
+        printmsg("ona_find_domain({$options['pointsto']}) returned: {$domain['fqdn']} for pointsto.", 'debug');
 
         // Now find what the host part of $search is
         $phostname = str_replace(".{$pdomain['fqdn']}", '', $options['pointsto']);
 
         // Validate that the DNS name has only valid characters in it
         $phostname = sanitize_hostname($phostname);
-        if (!$phostname) {
-            printmsg("ERROR => Invalid pointsto host name ({$options['pointsto']})!", 3);
-            $self['error'] = "ERROR => Invalid pointsto host name ({$options['pointsto']})!";
-            return(array(4, $self['error'] . "\n"));
+        if (!isset($phostname)) {
+            $self['error'] = "Invalid pointsto host name ({$options['pointsto']})!";
+            printmsg($self['error'], 'error');
+            return(array(4, $self['error']));
         }
         // Debugging
-        printmsg("DEBUG => Using 'pointsto' hostname: {$phostname}.{$pdomain['fqdn']}, Domain ID: {$pdomain['id']}", 3);
+        printmsg("Using 'pointsto' hostname: {$phostname}.{$pdomain['fqdn']}, Domain ID: {$pdomain['id']}", 'debug');
 
         // Validate that the CNAME I'm adding doesnt match an existing A record.
         list($d_status, $d_rows, $d_record) = ona_get_dns_record(array('name' => $hostname, 'domain_id' => $domain['id'],'type' => 'A','dns_view_id' => $add_viewid));
         if ($d_status or $d_rows) {
-            printmsg("ERROR => Another DNS A record named {$hostname}.{$domain['fqdn']} already exists!{$viewmsg}",3);
-            $self['error'] = "ERROR => Another DNS A record named {$hostname}.{$domain['fqdn']} already exists!{$viewmsg}";
-            return(array(5, $self['error'] . "\n"));
+            $self['error'] = "Another DNS A record named {$hostname}.{$domain['fqdn']} already exists!{$viewmsg}";
+            printmsg($self['error'], 'error');
+            return(array(5, $self['error']));
         }
 
 
         // Validate that there are no CNAMES already with this fqdn
         list($c_status, $c_rows, $c_record) = ona_get_dns_record(array('name' => $hostname, 'domain_id' => $domain['id'],'type' => 'CNAME','dns_view_id' => $add_viewid));
         if ($c_rows or $c_status) {
-            printmsg("ERROR => Another DNS CNAME record named {$hostname}.{$domain['fqdn']} already exists!{$viewmsg}",3);
-            $self['error'] = "ERROR => Another DNS CNAME record named {$hostname}.{$domain['fqdn']} already exists!{$viewmsg}";
-            return(array(5, $self['error'] . "\n"));
+            $self['error'] = "Another DNS CNAME record named {$hostname}.{$domain['fqdn']} already exists!{$viewmsg}";
+            printmsg($self['error'], 'error');
+            return(array(5, $self['error']));
         }
 
         // Find the dns record that it will point to
         list($status, $rows, $pointsto_record) = ona_get_dns_record(array('name' => $phostname, 'domain_id' => $pdomain['id'], 'type' => 'A','dns_view_id' => $add_viewid));
         if ($status or !$rows) {
-            printmsg("ERROR => Unable to find DNS A record to point CNAME entry to!{$viewmsg}",3);
-            $self['error'] = "ERROR => Unable to find DNS A record to point CNAME entry to!{$viewmsg}";
-            return(array(5, $self['error'] . "\n"));
+            $self['error'] = "Unable to find DNS A record to point CNAME entry to!{$viewmsg}";
+            printmsg($self['error'], 'error');
+            return(array(5, $self['error']));
         }
 
 
@@ -447,7 +440,7 @@ complex DNS messes for themselves.
         $add_dnsid = $pointsto_record['id'];
 
         // Dont print a dot unless hostname has a value
-        if ($hostname) $hostname = $hostname.'.';
+        if (isset($hostname)) $hostname = $hostname.'.';
 
         $info_msg = "{$hostname}{$domain['fqdn']} -> {$phostname}.{$pdomain['fqdn']}";
 
@@ -462,14 +455,14 @@ complex DNS messes for themselves.
         // find the domain
         list($status, $rows, $domain) = ona_find_domain($options['name'],0);
         if (!$domain['id']) {
-            printmsg("ERROR => Invalid domain name ({$options['name']})!", 3);
-            $self['error'] = "ERROR => Invalid domain name ({$options['name']})!";
-            return(array(4, $self['error'] . "\n"));
+            $self['error'] = "Invalid domain name ({$options['name']})!";
+            printmsg($self['error'], 'error');
+            return(array(4, $self['error']));
         }
         // Determine the host and domain name portions of the pointsto option
         // Find the domain name piece of $search
         list($status, $rows, $pdomain) = ona_find_domain($options['pointsto']);
-        printmsg("DEBUG => ona_find_domain({$options['pointsto']}) returned: {$pdomain['fqdn']} for pointsto.", 3);
+        printmsg("ona_find_domain({$options['pointsto']}) returned: {$pdomain['fqdn']} for pointsto.", 'debug');
 
         // Now find what the host part of $search is
         $phostname = str_replace(".{$pdomain['fqdn']}", '', $options['pointsto']);
@@ -484,27 +477,27 @@ complex DNS messes for themselves.
         // Validate that the DNS name has only valid characters in it
         $phostname = sanitize_hostname($phostname);
         if (!$phostname) {
-            printmsg("ERROR => Invalid pointsto host name ({$options['pointsto']})!", 3);
-            $self['error'] = "ERROR => Invalid pointsto host name ({$options['pointsto']})!";
-            return(array(4, $self['error'] . "\n"));
+            $self['error'] = "Invalid pointsto host name ({$options['pointsto']})!";
+            printmsg($self['error'], 'error');
+            return(array(4, $self['error']));
         }
         // Debugging
-        printmsg("DEBUG => Using 'pointsto' hostname: {$phostname}.{$pdomain['fqdn']}, Domain ID: {$pdomain['id']}", 3);
+        printmsg("Using 'pointsto' hostname: {$phostname}.{$pdomain['fqdn']}, Domain ID: {$pdomain['id']}", 'debug');
 
         // Find the dns record that it will point to
         list($status, $rows, $pointsto_record) = ona_get_dns_record(array('name' => $phostname, 'domain_id' => $pdomain['id'], 'type' => 'A','dns_view_id' => $add_pointsto_viewid));
         if ($status or !$rows) {
-            printmsg("ERROR => Unable to find DNS A record to point NS entry to!{$viewmsg}",3);
-            $self['error'] = "ERROR => Unable to find DNS A record to point NS entry to!{$viewmsg}";
-            return(array(5, $self['error'] . "\n"));
+            $self['error'] = "Unable to find DNS A record to point NS entry to!{$viewmsg}";
+            printmsg($self['error'], 'error');
+            return(array(5, $self['error']));
         }
 
         // Validate that there are no NS already with this domain and host
         list($status, $rows, $record) = ona_get_dns_record(array('dns_id' => $pointsto_record['id'], 'domain_id' => $domain['id'],'type' => 'NS','dns_view_id' => $add_viewid));
         if ($rows or $status) {
-            printmsg("ERROR => Another DNS NS record for {$domain['fqdn']} pointing to {$options['pointsto']} already exists!{$viewmsg}",3);
-            $self['error'] = "ERROR => Another DNS NS record for {$domain['fqdn']} pointing to {$options['pointsto']} already exists!{$viewmsg}";
-            return(array(5, $self['error'] . "\n"));
+            $self['error'] = "Another DNS NS record for {$domain['fqdn']} pointing to {$options['pointsto']} already exists!{$viewmsg}";
+            printmsg($self['error'], 'error');
+            return(array(5, $self['error']));
         }
 
 
@@ -521,9 +514,9 @@ complex DNS messes for themselves.
     else if ($options['type'] == 'MX') {
         // If there is no mx_preference set then stop
         if (!isset($options['mx_preference']) or ($options['mx_preference'] < 0 or $options['mx_preference'] > 65536)) {
-            printmsg("ERROR => You must provide an MX preference value when creating MX records!", 3);
-            $self['error'] = "ERROR => You must provide an MX preference value when creating MX records!";
-            return(array(4, $self['error'] . "\n"));
+            $self['error'] = "You must provide an MX preference value when creating MX records!";
+            printmsg($self['error'], 'error');
+            return(array(4, $self['error']));
         }
         // Lets try to find the name as a domain first.. if it matches a domain use that, othewise search for an A record
         $hostname = '';
@@ -532,7 +525,7 @@ complex DNS messes for themselves.
             // Determine the host and domain name portions of the pointsto option
             // Find the domain name piece of $search
             list($status, $rows, $domain) = ona_find_domain($options['name']);
-            printmsg("DEBUG => ona_find_domain({$options['name']}) returned: {$domain['fqdn']}.", 3);
+            printmsg("ona_find_domain({$options['name']}) returned: {$domain['fqdn']}.", 'debug');
 
             // Now find what the host part of $search is
             $hostname = str_replace(".{$domain['fqdn']}", '', $options['name']);
@@ -540,18 +533,18 @@ complex DNS messes for themselves.
             // Validate that the DNS name has only valid characters in it
             $hostname = sanitize_hostname($hostname);
             if (!$hostname) {
-                printmsg("ERROR => Invalid host name ({$options['name']})!", 3);
-                $self['error'] = "ERROR => Invalid host name ({$options['name']})!";
-                return(array(4, $self['error'] . "\n"));
+                $self['error'] = "Invalid host name ({$options['name']})!";
+                printmsg($self['error'], 'error');
+                return(array(4, $self['error']));
             }
             // Debugging
-            printmsg("DEBUG => Using hostname: {$hostname}.{$domain['fqdn']}, Domain ID: {$domain['id']}", 3);
+            printmsg("Using hostname: {$hostname}.{$domain['fqdn']}, Domain ID: {$domain['id']}", 'debug');
         }
 
         // Determine the host and domain name portions of the pointsto option
         // Find the domain name piece of $search
         list($status, $rows, $pdomain) = ona_find_domain($options['pointsto']);
-        printmsg("DEBUG => ona_find_domain({$options['pointsto']}) returned: {$pdomain['fqdn']} for pointsto.", 3);
+        printmsg("ona_find_domain({$options['pointsto']}) returned: {$pdomain['fqdn']} for pointsto.", 'debug');
 
         // Now find what the host part of $search is
         $phostname = str_replace(".{$pdomain['fqdn']}", '', $options['pointsto']);
@@ -559,19 +552,19 @@ complex DNS messes for themselves.
         // Validate that the DNS name has only valid characters in it
         $phostname = sanitize_hostname($phostname);
         if (!$phostname) {
-            printmsg("ERROR => Invalid pointsto host name ({$options['pointsto']})!", 3);
-            $self['error'] = "ERROR => Invalid pointsto host name ({$options['pointsto']})!";
-            return(array(4, $self['error'] . "\n"));
+            $self['error'] = "Invalid pointsto host name ({$options['pointsto']})!";
+            printmsg($self['error'], 'error');
+            return(array(4, $self['error']));
         }
         // Debugging
-        printmsg("DEBUG => Using 'pointsto' hostname: {$phostname}.{$pdomain['fqdn']}, Domain ID: {$pdomain['id']}", 3);
+        printmsg("Using 'pointsto' hostname: {$phostname}.{$pdomain['fqdn']}, Domain ID: {$pdomain['id']}", 'debug');
 
         // Find the dns record that it will point to
         list($status, $rows, $pointsto_record) = ona_get_dns_record(array('name' => $phostname, 'domain_id' => $pdomain['id'], 'type' => 'A','dns_view_id' => $add_viewid));
         if ($status or !$rows) {
-            printmsg("ERROR => Unable to find DNS A record to point NS entry to!{$viewmsg}",3);
-            $self['error'] = "ERROR => Unable to find DNS A record to point NS entry to!{$viewmsg}";
-            return(array(5, $self['error'] . "\n"));
+            $self['error'] = "Unable to find DNS A record to point NS entry to!{$viewmsg}";
+            printmsg($self['error'], 'error');
+            return(array(5, $self['error']));
         }
 
 
@@ -582,7 +575,7 @@ complex DNS messes for themselves.
         $add_mx_preference = $options['mx_preference'];
 
         // Dont print a dot unless hostname has a value
-        if ($hostname) $hostname = $hostname.'.';
+        if (isset($hostname)) $hostname = $hostname.'.';
 
         $info_msg = "{$hostname}{$domain['fqdn']} -> {$phostname}.{$pdomain['fqdn']}";
 
@@ -596,36 +589,36 @@ complex DNS messes for themselves.
 
         // If there is no srv_pri set then stop
         if (!isset($options['srv_pri']) or ($options['srv_pri'] < 0 or $options['srv_pri'] > 65536)) {
-            printmsg("ERROR => You must provide an SRV priority value between 0-65535 when creating SRV records!", 3);
-            $self['error'] = "ERROR => You must provide an SRV priority value between 0-65535 when creating SRV records!";
-            return(array(4, $self['error'] . "\n"));
+            $self['error'] = "You must provide an SRV priority value between 0-65535 when creating SRV records!";
+            printmsg($self['error'], 'error');
+            return(array(4, $self['error']));
         }
 
         // If there is no srv_weight set then stop
         if (!isset($options['srv_weight']) or ($options['srv_weight'] < 0 or $options['srv_weight'] > 65536)) {
-            printmsg("ERROR => You must provide an SRV weight value between 0-65535 when creating SRV records!", 3);
-            $self['error'] = "ERROR => You must provide an SRV weight value between 0-65535 when creating SRV records!";
-            return(array(4, $self['error'] . "\n"));
+            $self['error'] = "You must provide an SRV weight value between 0-65535 when creating SRV records!";
+            printmsg($self['error'], 'error');
+            return(array(4, $self['error']));
         }
 
         // If there is no srv_port set then stop
         if (!isset($options['srv_port']) or ($options['srv_port'] < 0 or $options['srv_port'] > 65536)) {
-            printmsg("ERROR => You must provide an SRV port value between 0-65535 when creating SRV records!", 3);
-            $self['error'] = "ERROR => You must provide an SRV port value between 0-65535 when creating SRV records!";
-            return(array(4, $self['error'] . "\n"));
+            $self['error'] = "You must provide an SRV port value between 0-65535 when creating SRV records!";
+            printmsg($self['error'], 'error');
+            return(array(4, $self['error']));
         }
 
         // find the domain
         list($status, $rows, $domain) = ona_find_domain($options['name'],0);
         if (!$domain['id']) {
-            printmsg("ERROR => Invalid domain name ({$options['name']})!", 3);
-            $self['error'] = "ERROR => Invalid domain name ({$options['name']})!";
-            return(array(4, $self['error'] . "\n"));
+            $self['error'] = "Invalid domain name ({$options['name']})!";
+            printmsg($self['error'], 'error');
+            return(array(4, $self['error']));
         }
         // Determine the host and domain name portions of the pointsto option
         // Find the domain name piece of $search
         list($status, $rows, $pdomain) = ona_find_domain($options['pointsto']);
-        printmsg("DEBUG => ona_find_domain({$options['pointsto']}) returned: {$pdomain['fqdn']} for pointsto.", 3);
+        printmsg("ona_find_domain({$options['pointsto']}) returned: {$pdomain['fqdn']} for pointsto.", 'debug');
 
         // Now find what the host part of $search is
         $phostname = str_replace(".{$pdomain['fqdn']}", '', $options['pointsto']);
@@ -633,27 +626,27 @@ complex DNS messes for themselves.
         // Validate that the DNS name has only valid characters in it
         $phostname = sanitize_hostname($phostname);
         if (!$phostname) {
-            printmsg("ERROR => Invalid pointsto host name ({$options['pointsto']})!", 3);
-            $self['error'] = "ERROR => Invalid pointsto host name ({$options['pointsto']})!";
-            return(array(4, $self['error'] . "\n"));
+            $self['error'] = "Invalid pointsto host name ({$options['pointsto']})!";
+            printmsg($self['error'], 'error');
+            return(array(4, $self['error']));
         }
         // Debugging
-        printmsg("DEBUG => Using 'pointsto' hostname: {$phostname}.{$pdomain['fqdn']}, Domain ID: {$pdomain['id']}", 3);
+        printmsg("Using 'pointsto' hostname: {$phostname}.{$pdomain['fqdn']}, Domain ID: {$pdomain['id']}", 'debug');
 
         // Find the dns record that it will point to
         list($status, $rows, $pointsto_record) = ona_get_dns_record(array('name' => $phostname, 'domain_id' => $pdomain['id'], 'type' => 'A','dns_view_id' => $add_viewid));
         if ($status or !$rows) {
-            printmsg("ERROR => Unable to find DNS A record to point SRV entry to!{$viewmsg}",3);
-            $self['error'] = "ERROR => Unable to find DNS A record to point SRV entry to!{$viewmsg}";
-            return(array(5, $self['error'] . "\n"));
+            $self['error'] = "Unable to find DNS A record to point SRV entry to!{$viewmsg}";
+            printmsg($self['error'], 'error');
+            return(array(5, $self['error']));
         }
 
         // Validate that there are no records already with this domain and host
         list($status, $rows, $record) = ona_get_dns_record(array('dns_id' => $pointsto_record['id'], 'name' => $hostname, 'domain_id' => $domain['id'],'type' => 'SRV','dns_view_id' => $add_viewid));
         if ($rows or $status) {
-            printmsg("ERROR => Another DNS SRV record for {$hostname}.{$domain['fqdn']} pointing to {$options['pointsto']} already exists!{$viewmsg}",3);
-            $self['error'] = "ERROR => Another DNS SRV record for {$hostname}.{$domain['fqdn']} pointing to {$options['pointsto']} already exists!{$viewmsg}";
-            return(array(5, $self['error'] . "\n"));
+            $self['error'] = "Another DNS SRV record for {$hostname}.{$domain['fqdn']} pointing to {$options['pointsto']} already exists!{$viewmsg}";
+            printmsg($self['error'], 'error');
+            return(array(5, $self['error']));
         }
 
 
@@ -666,7 +659,7 @@ complex DNS messes for themselves.
         $add_srv_port = $options['srv_port'];
 
         // Dont print a dot unless hostname has a value
-        if ($hostname) $hostname = $hostname.'.';
+        if (isset($hostname)) $hostname = $hostname.'.';
 
         $info_msg = "{$hostname}{$domain['fqdn']} -> {$phostname}.{$pdomain['fqdn']}";
 
@@ -703,9 +696,9 @@ complex DNS messes for themselves.
             // find the IP interface record,
             list($status, $rows, $interface) = ona_find_interface($options['ip']);
             if (!$rows) {
-                printmsg("ERROR => dns_record_add() Unable to find IP interface: {$options['ip']}",3);
-                $self['error'] = "ERROR => dns_record_add() Unable to find IP interface: {$options['ip']}. TXT records must point to existing IP addresses.  Please add an interface with this IP address first.";
-                return(array(4, $self['error'] . "\n"));
+                $self['error'] = "Unable to find IP interface: {$options['ip']}. TXT records must point to existing IP addresses.  Please add an interface with this IP address first.";
+                printmsg($self['error'], 'error');
+                return(array(4, $self['error']));
             }
 
             $add_interfaceid = $interface['id'];
@@ -716,9 +709,9 @@ complex DNS messes for themselves.
         // Validate that there are no TXT already with this domain and host
         list($status, $rows, $record) = ona_get_dns_record(array('txt' => $options['txt'], 'name' => $hostname, 'domain_id' => $domain['id'],'type' => 'TXT','dns_view_id' => $add_viewid));
         if ($rows or $status) {
-            printmsg("ERROR => Another DNS TXT record for {$options['name']} with that text value already exists!{$viewmsg}",3);
-            $self['error'] = "ERROR => Another DNS TXT record for {$options['name']} with that text value already exists!{$viewmsg}";
-            return(array(5, $self['error'] . "\n"));
+            $self['error'] = "Another DNS TXT record for {$options['name']} with that text value already exists!{$viewmsg}";
+            printmsg($self['error'], 'error');
+            return(array(5, $self['error']));
         }
 
 
@@ -731,16 +724,16 @@ complex DNS messes for themselves.
         $add_txt = $options['txt'];
 
         // Dont print a dot unless hostname has a value
-        if ($hostname) $hostname = $hostname.'.';
+        if (isset($hostname)) $hostname = $hostname.'.';
 
         $info_msg = "{$hostname}{$domain['fqdn']}";
 
     }
     // If it is not a recognized record type, bail out!
     else {
-            printmsg("ERROR => Invalid DNS record type: {$options['type']}!",3);
-            $self['error'] = "ERROR => Invalid DNS record type: {$options['type']}!";
-            return(array(5, $self['error'] . "\n"));
+            $self['error'] = "Invalid DNS record type: {$options['type']}!";
+            printmsg($self['error'], 'error');
+            return(array(5, $self['error']));
     }
 
 
@@ -751,18 +744,18 @@ complex DNS messes for themselves.
     // Check permissions
     if (!auth('host_add')) {
         $self['error'] = "Permission denied!";
-        printmsg($self['error'], 0);
-        return(array(10, $self['error'] . "\n"));
+        printmsg($self['error'], 'error');
+        return(array(10, $self['error']));
     }
 
     // Get the next ID for the new dns record
     $id = ona_get_next_id('dns');
     if (!$id) {
-        $self['error'] = "ERROR => The ona_get_next_id('dns') call failed!";
-        printmsg($self['error'], 0);
-        return(array(7, $self['error'] . "\n"));
+        $self['error'] = "The ona_get_next_id('dns') call failed!";
+        printmsg($self['error'], 'error');
+        return(array(7, $self['error']));
     }
-    printmsg("DEBUG => ID for new dns record: $id", 3);
+    printmsg("ID for new dns record: $id", 'debug');
 
     // If a ttl was passed use it, otherwise use what was in the domain minimum
     if ($options['ttl']) { $add_ttl = $options['ttl']; } else { $add_ttl = 0; }
@@ -794,39 +787,41 @@ complex DNS messes for themselves.
        )
     );
     if ($status or !$rows) {
-        $self['error'] = "ERROR => dns_record_add() SQL Query failed adding dns record: " . $self['error'];
-        printmsg($self['error'], 1);
-        return(array(6, $self['error'] . "\n"));
+        $self['error'] = "SQL Query failed adding dns record: " . $self['error'];
+        printmsg($self['error'], 'error');
+        return(array(6, $self['error']));
     }
-
-    $text = '';
 
     // If it is an A record and they have specified to auto add the PTR record for it.
     if ($options['addptr'] == 'Y' and $options['type'] == 'A') {
-        printmsg("DEBUG => Auto adding a PTR record for {$options['name']}.", 4);
+        printmsg("Auto adding a PTR record for {$options['name']}.", 'notice');
         // Run dns_record_add as a PTR type
-        list($status, $output) = run_module('dns_record_add', array('name' => $options['name'],'domain' => $domain['fqdn'],'ip' => $options['ip'],'ebegin' => $options['ebegin'],'type' => 'PTR','view' => $add_viewid));
+        list($status, $output) = run_module('dns_record_add', array('dns_record' => $options['name'],'domain' => $domain['fqdn'],'ip' => $options['ip'],'ebegin' => $options['ebegin'],'type' => 'PTR','view' => $add_viewid));
         if ($status) {
             return(array($status, $output));
-            printmsg($output,3);
+            #printmsg($output,3);
         }
     }
 
     // TRIGGER: Since we are adding a new record, lets mark the domain for rebuild on its servers
     list($status, $rows) = db_update_record($onadb, 'dns_server_domains', array('domain_id' => $add_domainid), array('rebuild_flag' => 1));
     if ($status) {
-        $self['error'] = "ERROR => dns_record_add() Unable to update rebuild flags for domain.: {$self['error']}";
-        printmsg($self['error'],0);
-        return(array(7, $self['error'] . "\n"));
+        $self['error'] = "Unable to update rebuild flags for domain.: {$self['error']}";
+        printmsg($self['error'],'error');
+        return(array(7, $self['error']));
     }
 
-    // Else start an output message
-    $text .= "INFO => DNS {$options['type']} record ADDED: {$info_msg}";
-    printmsg($text,0);
-    $text .= "\n";
+    $result['status_msg'] = 'DNS record added.';
+    $result['module_version'] = $version;
+    list($status, $rows, $result['dns_records'][0]) = ona_get_dns_record(array('id' => $id));
+
+    ksort($result['dns_records'][0]);
+
+    $msg = "DNS {$options['type']} record ADDED: {$info_msg}";
+    printmsg($msg, 'notice');
 
     // Return the success notice
-    return(array(0, $text));
+    return(array(0, $result));
 }
 
 
@@ -859,28 +854,21 @@ function dns_record_modify($options="") {
     global $conf, $self, $onadb;
 
     // Version - UPDATE on every edit!
-    $version = '1.13';
-
-    printmsg("DEBUG => dns_record_modify({$options}) called", 3);
-
-    // Parse incoming options string to an array
-    $options = parse_options($options);
+    $version = '2.00';
 
     // Return the usage summary if we need to
-    if ($options['help'] or
-       (!$options['set_name'] and
-        !$options['set_ip'] and
-        !$options['set_ttl'] and
-        !$options['set_pointsto'] and
-        !$options['set_srv_pri'] and
-        !$options['set_srv_weight'] and
-        !$options['set_srv_port'] and
-        !$options['set_mx_preference'] and
-        !$options['set_notes'] and
-        !$options['set_view']
+    if ((!isset($options['set_name']) and
+        !isset($options['set_ip']) and
+        !isset($options['set_ttl']) and
+        !isset($options['set_pointsto']) and
+        !isset($options['set_srv_pri']) and
+        !isset($options['set_srv_weight']) and
+        !isset($options['set_srv_port']) and
+        !isset($options['set_mx_preference']) and
+        !isset($options['set_notes']) and
+        !isset($options['set_view'])
        ) ) {
-        // NOTE: Help message lines should not exceed 80 characters for proper display on a console
-        $self['error'] = 'ERROR => Insufficient parameters';
+        $self['error'] = 'Insufficient parameters';
         return(array(1,
 <<<EOM
 
@@ -928,43 +916,50 @@ EOM
     // Check permissions
     if (!auth('host_modify')) {
         $self['error'] = "Permission denied!";
-        printmsg($self['error'], 0);
-        return(array(10, $self['error'] . "\n"));
+        printmsg($self['error'], 'error');
+        return(array(10, $self['error']));
     }
 
 
     // Sanitize addptr.. set it to Y if it is not set
-    $options['set_addptr'] = sanitize_YN($options['set_addptr'], 'Y');
+    if (isset($options['set_addptr']))
+      $options['set_addptr'] = sanitize_YN($options['set_addptr'], 'Y');
 
     // clean up what is passed in
-    $options['set_ip'] = trim($options['set_ip']);
-    $options['set_pointsto'] = trim($options['set_pointsto']);
-    $options['set_name'] = trim($options['set_name']);
-    $options['set_domain'] = trim($options['set_domain']);
-    $options['set_txt'] = trim($options['set_txt']);
+    if (isset($options['set_ip']))
+      $options['set_ip'] = trim($options['set_ip']);
+    if (isset($options['set_pointsto']))
+      $options['set_pointsto'] = trim($options['set_pointsto']);
+    if (isset($options['set_name']))
+      $options['set_name'] = trim($options['set_name']);
+    if (isset($options['set_domain']))
+      $options['set_domain'] = trim($options['set_domain']);
+    if (isset($options['set_txt']))
+      $options['set_txt'] = trim($options['set_txt']);
     //$options['set_view'] = trim($options['set_view']);
     //
     // Find the dns record we're modifying
     //
 
     // If the name we were passed has a leading . in it then remove the dot.
-    $options['set_name'] = preg_replace("/^\./", '', $options['set_name']);
+    if (isset($options['set_name']))
+      $options['set_name'] = preg_replace("/^\./", '', $options['set_name']);
 
-    // Find the DNS record from $options['name']
-    list($status, $rows, $dns) = ona_find_dns_record($options['name']);
-    printmsg("DEBUG => dns_record_modify() DNS record: {$dns['fqdn']}", 3);
+    // Find the DNS record from $options['dns_record']
+    list($status, $rows, $dns) = ona_find_dns_record($options['dns_record']);
+    printmsg("DNS record: {$dns['fqdn']}", 'debug');
     if ($rows > 1) {
-        printmsg("DEBUG => Found more than one DNS record for: {$options['name']}",3);
-        $self['error'] = "ERROR => Found more than one DNS record for: {$options['name']}";
-        return(array(2, $self['error'] . "\n"));
+        $self['error'] = "Found more than one DNS record for: {$options['dns_record']}";
+        printmsg($self['error'], 'error');
+        return(array(2, $self['error']));
     }
 
 
     // If we didn't get a record then exit
     if (!$dns['id']) {
-        printmsg("DEBUG => DNS record not found ({$options['name']})!",3);
-        $self['error'] = "ERROR => DNS record not found ({$options['name']})!";
-        return(array(4, $self['error'] . "\n"));
+        $self['error'] = "DNS record not found ({$options['dns_record']})!";
+        printmsg($self['error'], 'error');
+        return(array(4, $self['error']));
     }
 
     // Set the current_name variable with the records current name
@@ -998,9 +993,9 @@ EOM
         // find the IP interface record,
         list($status, $rows, $dnsview) = ona_get_dns_view_record($viewsearch);
         if (!$rows) {
-            printmsg("ERROR => dns_record_modify() Unable to find DNS view: {$options['set_view']}",3);
-            $self['error'] = "ERROR => dns_record_modify() Unable to find DNS view: {$options['set_view']}.";
-            return(array(4, $self['error'] . "\n"));
+            $self['error'] = "Unable to find DNS view: {$options['set_view']}.";
+            printmsg($self['error'], 'error');
+            return(array(4, $self['error']));
         }
 
         // If we have a new dns view, add it to the SET array and update the check view variable used in all the checks.
@@ -1008,9 +1003,9 @@ EOM
 
             // You can only change the view on parent records.. if this record has a dns_id, you must change the parent
             if ($dns['dns_id']) {
-                printmsg("ERROR => You must change the parent DNS A record to the new view.  This record will follow.",3);
-                $self['error'] = "ERROR => You must change the parent DNS A record to the new view.  This record will follow.";
-                return(array(5, $self['error'] . "\n"));
+                $self['error'] = "You must change the parent DNS A record to the new view.  This record will follow.";
+                printmsg($self['error'], 'error');
+                return(array(5, $self['error']));
             }
 
             $SET['dns_view_id'] = $dnsview['id'];
@@ -1020,12 +1015,12 @@ EOM
     }
 
     // Checking the IP setting first to estabilish if we are changing the IP so I can check the new combo of A/ip later
-    if ($options['set_ip'] and ($options['set_ip'] != '0.0.0.0')) {
+    if (isset($options['set_ip']) and ($options['set_ip'] != '0.0.0.0')) {
         // find the IP interface record, to ensure it is valid
         list($status, $rows, $interface) = ona_find_interface($options['set_ip']);
         if (!$rows) {
-            printmsg("ERROR => dns_record_modify() Unable to find IP interface: {$options['set_ip']}",3);
-            $self['error'] = "ERROR => dns_record_modify() Unable to find IP interface: {$options['set_ip']}\n";
+            $self['error'] = "Unable to find IP interface: {$options['set_ip']}\n";
+            printmsg($self['error'], 'error');
             return(array(4, $self['error']));
         }
 
@@ -1035,8 +1030,8 @@ EOM
             // I think they will always be just PTR records so I am only selecting that type for now?
             list($status, $rows, $dnschild) = ona_get_dns_record(array('dns_id' => $dns['id'], 'interface_id' => $interface['id'], 'type' => 'PTR'));
             if ($rows) {
-                printmsg("ERROR => dns_record_modify() This change results in a duplicate child DNS record: PTR {$options['set_ip']}. Delete existing PTR record first.",3);
-                $self['error'] = "<br>ERROR => dns_record_modify() This change results in a duplicate child DNS record: PTR {$options['set_ip']}.<br> Delete existing PTR record first.\n";
+                $self['error'] = "This change results in a duplicate child DNS record: PTR {$options['set_ip']}. Delete existing PTR record first.";
+                printmsg($self['error'], 'error');
                 return(array(4, $self['error']));
             }
 
@@ -1050,11 +1045,11 @@ EOM
 
     // Set options['set_name']?
     // Validate that the DNS name has only valid characters in it
-    if ($options['set_name']) {
+    if (isset($options['set_name'])) {
 
         // If we are specifically passing in a domain, use its value.  If we dont have a domain
         // then try to find it in the name that we are setting.
-        if($options['set_domain']) {
+        if(isset($options['set_domain'])) {
             // Find the domain name piece of $search
             list($status, $rows, $domain) = ona_find_domain($options['set_domain'],0);
         } else {
@@ -1063,11 +1058,11 @@ EOM
 
         // Find the domain name piece of $search
         if (!isset($domain['id'])) {
-            printmsg("ERROR => Unable to determine domain name portion of ({$options['set_name']})!", 3);
-            $self['error'] = "ERROR => Unable to determine domain name portion of ({$options['set_name']})!";
-            return(array(3, $self['error'] . "\n"));
+            $self['error'] = "Unable to determine domain name portion of ({$options['set_name']})!";
+            printmsg($self['error'], 'error');
+            return(array(3, $self['error']));
         }
-        printmsg("DEBUG => ona_find_domain({$options['set_name']}) returned: {$domain['fqdn']} for new name.", 3);
+        printmsg("ona_find_domain({$options['set_name']}) returned: {$domain['fqdn']} for new name.", 'debug');
 
         // Now find what the host part of $search is
         $hostname = str_replace(".{$domain['fqdn']}", '', $options['set_name']);
@@ -1075,9 +1070,9 @@ EOM
         // Validate that the DNS name has only valid characters in it
         $hostname = sanitize_hostname($hostname);
         if (!$hostname) {
-            printmsg("DEBUG => Invalid host name ({$options['set_name']})!", 3);
-            $self['error'] = "ERROR => Invalid host name ({$options['set_name']})!";
-            return(array(4, $self['error'] . "\n"));
+            $self['error'] = "Invalid host name ({$options['set_name']})!";
+            printmsg($self['error'], 'error');
+            return(array(4, $self['error']));
         }
 
         // If the hostname we came up with and the domain name are the same, then assume this is
@@ -1085,7 +1080,7 @@ EOM
         if ($hostname == $domain['fqdn']) $hostname = '';
 
         // Debugging
-        printmsg("DEBUG => Using hostname: {$hostname}.{$domain['fqdn']}, Domain ID: {$domain['id']}", 3);
+        printmsg("Using hostname: {$hostname}.{$domain['fqdn']}, Domain ID: {$domain['id']}", 'debug');
 
 
         // if it is an a record and we are changing the name.. make sure there is not already an A with that name/ip combo
@@ -1095,9 +1090,9 @@ EOM
             list($status, $rows, $tmp) = ona_get_dns_record(array('name' => $hostname, 'domain_id' => $domain['id'], 'interface_id' => $dns['interface_id'], 'type' => 'A','dns_view_id' => $check_dns_view_id));
             if ($rows) {
                 if ($tmp['id'] != $dns['id'] or $rows > 1) {
-                    printmsg("ERROR => There is already an A record with that name and IP address!{$viewmsg}",3);
-                    $self['error'] = "ERROR => There is already an A record with that name and IP address!{$viewmsg}";
-                    return(array(5, $self['error'] . "\n"));
+                    $self['error'] = "There is already an A record with that name and IP address!{$viewmsg}";
+                    printmsg($self['error'], 'error');
+                    return(array(5, $self['error']));
                 }
             }
         }
@@ -1107,9 +1102,9 @@ EOM
             list($status, $rows, $tmp) = ona_get_dns_record(array('name' => $hostname, 'domain_id' => $domain['id'], 'dns_id' => $dns['dns_id'], 'type' => $dns['type'],'dns_view_id' => $check_dns_view_id));
             if ($rows) {
                 if ($tmp['id'] != $dns['id'] or $rows > 1) {
-                    printmsg("ERROR => There is already a {$dns['type']} with that name pointing to that A record!{$viewmsg}",3);
-                    $self['error'] = "ERROR => There is already a {$dns['type']} with that name pointing to that A record!{$viewmsg}";
-                    return(array(6, $self['error'] . "\n"));
+                    $self['error'] = "There is already a {$dns['type']} with that name pointing to that A record!{$viewmsg}";
+                    printmsg($self['error'], 'error');
+                    return(array(6, $self['error']));
                 }
             }
         }
@@ -1118,9 +1113,9 @@ EOM
             // if it is a CNAME, make sure the new name is not an A record name already
             list($status, $rows, $tmp) = ona_get_dns_record(array('name' => $hostname, 'domain_id' => $domain['id'], 'type' => 'A','dns_view_id' => $check_dns_view_id));
             if ($status or $rows) {
-                printmsg("ERROR => There is already an A record with that name!{$viewmsg}",3);
-                $self['error'] = "ERROR => There is already an A record with that name!{$viewmsg}";
-                return(array(7, $self['error'] . "\n"));
+                $self['error'] = "There is already an A record with that name!{$viewmsg}";
+                printmsg($self['error'], 'error');
+                return(array(7, $self['error']));
             }
         }
 
@@ -1157,7 +1152,7 @@ EOM
         // Determine the host and domain name portions of the pointsto option
         // Find the domain name piece of $search
         list($status, $rows, $pdomain) = ona_find_domain($options['set_pointsto']);
-        printmsg("DEBUG => ona_find_domain({$options['set_pointsto']}) returned: {$domain['fqdn']} for pointsto.", 3);
+        printmsg("ona_find_domain({$options['set_pointsto']}) returned: {$domain['fqdn']} for pointsto.", 'debug');
 
         // Now find what the host part of $search is
         $phostname = str_replace(".{$pdomain['fqdn']}", '', $options['set_pointsto']);
@@ -1165,29 +1160,29 @@ EOM
         // Validate that the DNS name has only valid characters in it
         $phostname = sanitize_hostname($phostname);
         if (!$phostname) {
-            printmsg("DEBUG => Invalid pointsto host name ({$options['set_pointsto']})!", 3);
-            $self['error'] = "ERROR => Invalid pointsto host name ({$options['set_pointsto']})!";
-            return(array(4, $self['error'] . "\n"));
+            $self['error'] = "Invalid pointsto host name ({$options['set_pointsto']})!";
+            printmsg($self['error'], 'error');
+            return(array(4, $self['error']));
         }
         // Debugging
-        printmsg("DEBUG => Using 'pointsto' hostname: {$phostname}.{$pdomain['fqdn']}, Domain ID: {$pdomain['id']}", 3);
+        printmsg("Using 'pointsto' hostname: {$phostname}.{$pdomain['fqdn']}, Domain ID: {$pdomain['id']}", 'debug');
 
 
         // Find the dns record that it will point to
         list($status, $rows, $pointsto_record) = ona_get_dns_record(array('name' => $phostname, 'domain_id' => $pdomain['id'], 'type' => 'A','dns_view_id' => $check_dns_view_id));
         if ($status or !$rows) {
-            printmsg("ERROR => Unable to find DNS A record to point {$options['set_type']} entry to!{$viewmsg}",3);
-            $self['error'] = "ERROR => Unable to find DNS A record to point {$options['set_type']} entry to!{$viewmsg}";
-            return(array(5, $self['error'] . "\n"));
+            $self['error'] = "Unable to find DNS A record to point {$options['set_type']} entry to!{$viewmsg}";
+            printmsg($self['error'], 'error');
+            return(array(5, $self['error']));
         }
 
 
         // Validate that there are no entries already pointed to the new A record
         list($c_status, $c_rows, $c_record) = ona_get_dns_record(array('name' => $dns['name'], 'domain_id' => $dns['domain_id'], 'dns_id' => $pointsto_record['id'], 'type' => $options['set_type'],'dns_view_id' => $check_dns_view_id));
         if ($c_record['id'] != $dns['id'] and $c_rows) {
-            printmsg("ERROR => Another DNS {$options['set_type']} record exists with the values you've selected!{$viewmsg}",3);
-            $self['error'] = "ERROR => Another DNS {$options['set_type']} record exists with the values you've selected!{$viewmsg}";
-            return(array(5, $self['error'] . "\n"));
+            $self['error'] = "Another DNS {$options['set_type']} record exists with the values you've selected!{$viewmsg}";
+            printmsg($self['error'], 'error');
+            return(array(5, $self['error']));
         }
 
 
@@ -1250,13 +1245,13 @@ EOM
 
     // If it is an A record and they have specified to auto add the PTR record for it.
     if ($options['set_addptr'] == 'Y' and $options['set_type'] == 'A') {
-        printmsg("DEBUG => Auto adding a PTR record for {$options['set_name']}.", 0);
+        printmsg("Auto adding a PTR record for {$options['set_name']}.", 'notice');
         // Run dns_record_add as a PTR type
         // Always use the $current_name variable as the name might change during the update
-        list($status, $output) = run_module('dns_record_add', array('name' => $current_name, 'domain' => $domain['fqdn'], 'ip' => $options['set_ip'],'ebegin' => $options['set_ebegin'],'type' => 'PTR','view' => $check_dns_view_id));
+        list($status, $output) = run_module('dns_record_add', array('dns_record' => $current_name, 'domain' => $domain['fqdn'], 'ip' => $options['set_ip'],'ebegin' => $options['set_ebegin'],'type' => 'PTR','view' => $check_dns_view_id));
         if ($status)
             return(array($status, $output));
-            printmsg($text);
+            #printmsg($text);
     }
 
 
@@ -1275,12 +1270,12 @@ EOM
         if ($changingint) {
             // If the interface id has changed, make sure any child records are updated first
             if ($SET['interface_id'] != $current_int_id) {
-                printmsg("DEBUG = > dns_record_modify() Updating child interfaces to new interface.", 2);
+                printmsg("Updating child interfaces to new interface.", 'notice');
                 list($status, $rows) = db_update_record($onadb, 'dns', array('dns_id' => $dns['id'], 'interface_id' => $current_int_id), array('interface_id' => $SET['interface_id']));
                 if ($status) {
-                    $self['error'] = "ERROR => dns_record_modify() SQL Query failed for dns record: " . $self['error'];
-                    printmsg($self['error'], 0);
-                    return(array(11, $self['error'] . "\n"));
+                    $self['error'] = "SQL Query failed for dns record: " . $self['error'];
+                    printmsg($self['error'], 'error');
+                    return(array(11, $self['error']));
                 }
                 // TODO: may need set rebuild flag on each of the domains related to  these child records that just changed
             }
@@ -1302,18 +1297,18 @@ EOM
             // TRIGGER: we made a change and need to update the CURRENT PTR record as well, only sets it if the ptrdomain changes
             list($status, $rows) = db_update_record($onadb, 'dns_server_domains', array('domain_id' => $dnsrec['domain_id']), array('rebuild_flag' => 1));
             if ($status) {
-                $self['error'] = "ERROR => dns_record_add() Unable to update rebuild flags for domain.: {$self['error']}";
-                printmsg($self['error'],0);
-                return(array(7, $self['error'] . "\n"));
+                $self['error'] = "Unable to update rebuild flags for domain.: {$self['error']}";
+                printmsg($self['error'],'error');
+                return(array(7, $self['error']));
             }
 
             // if we find any PTR records and the domain has chaned, make sure the child PTR records have the updated PTR domain info.
             if (isset($ptrdomain['id']) and $drrows>0 and $dnsrec['domain_id'] != $ptrdomain['id']) {
                 list($status, $rows) = db_update_record($onadb, 'dns', array('id' => $dnsrec['id']), array('domain_id' => $ptrdomain['id'], 'ebegin' => $SET['ebegin']));
                 if ($status or !$rows) {
-                    $self['error'] = "ERROR => dns_record_modify() Child PTR record domain update failed: " . $self['error'];
-                    printmsg($self['error'], 0);
-                    return(array(14, $self['error'] . "\n"));
+                    $self['error'] = "Child PTR record domain update failed: " . $self['error'];
+                    printmsg($self['error'], 'error');
+                    return(array(14, $self['error']));
                 }
 
 
@@ -1321,9 +1316,9 @@ EOM
                 // TRIGGER: we made a change and need to update the NEW PTR record as well, only sets it if the ptrdomain changes
                 list($status, $rows) = db_update_record($onadb, 'dns_server_domains', array('domain_id' => $ptrdomain['id']), array('rebuild_flag' => 1));
                 if ($status) {
-                    $self['error'] = "ERROR => dns_record_add() Unable to update rebuild flags for domain.: {$self['error']}";
-                    printmsg($self['error'],0);
-                    return(array(7, $self['error'] . "\n"));
+                    $self['error'] = "Unable to update rebuild flags for domain.: {$self['error']}";
+                    printmsg($self['error'],'error');
+                    return(array(7, $self['error']));
                 }
             }
         }
@@ -1331,12 +1326,12 @@ EOM
         // If we are changing the view, we must change all other DNS records that point to this one to the same view.
         if ($changingview) {
             if ($SET['dns_view_id'] != $current_dns_view_id) {
-                printmsg("DEBUG = > dns_record_modify() Updating child DNS records to new dns view.", 2);
+                printmsg("Updating child DNS records to new dns view.", 'notice');
                 list($status, $rows) = db_update_record($onadb, 'dns', array('dns_id' => $dns['id']), array('dns_view_id' => $SET['dns_view_id']));
                 if ($status) {
-                    $self['error'] = "ERROR => dns_record_modify() SQL Query failed for dns record child view updates: " . $self['error'];
-                    printmsg($self['error'], 0);
-                    return(array(11, $self['error'] . "\n"));
+                    $self['error'] = "SQL Query failed for dns record child view updates: " . $self['error'];
+                    printmsg($self['error'], 'error');
+                    return(array(11, $self['error']));
                 }
             }
 
@@ -1351,26 +1346,26 @@ EOM
         // Change the actual DNS record
         list($status, $rows) = db_update_record($onadb, 'dns', array('id' => $dns['id']), $SET);
         if ($status or !$rows) {
-            $self['error'] = "ERROR => dns_record_modify() SQL Query failed for dns record: " . $self['error'];
-            printmsg($self['error'], 0);
-            return(array(12, $self['error'] . "\n"));
+            $self['error'] = "SQL Query failed for dns record: " . $self['error'];
+            printmsg($self['error'], 'error');
+            return(array(12, $self['error']));
         }
 
         // TRIGGER: we made a change, lets mark the domain for rebuild on its servers
         list($status, $rows) = db_update_record($onadb, 'dns_server_domains', array('domain_id' => $dns['domain_id']), array('rebuild_flag' => 1));
         if ($status) {
-            $self['error'] = "ERROR => dns_record_add() Unable to update rebuild flags for domain.: {$self['error']}";
-            printmsg($self['error'],0);
-            return(array(7, $self['error'] . "\n"));
+            $self['error'] = "Unable to update rebuild flags for domain.: {$self['error']}";
+            printmsg($self['error'],'error');
+            return(array(7, $self['error']));
         }
 
         // TRIGGER: If we are changing domains, lets flag the new domain as well, lets mark the domain for rebuild on its servers
         if($SET['domain_id']) {
             list($status, $rows) = db_update_record($onadb, 'dns_server_domains', array('domain_id' => $SET['domain_id']), array('rebuild_flag' => 1));
             if ($status) {
-                $self['error'] = "ERROR => dns_record_add() Unable to update rebuild flags for domain.: {$self['error']}";
-                printmsg($self['error'],0);
-                return(array(7, $self['error'] . "\n"));
+                $self['error'] = "Unable to update rebuild flags for domain.: {$self['error']}";
+                printmsg($self['error'],'error');
+                return(array(7, $self['error']));
             }
         }
 
@@ -1381,21 +1376,24 @@ EOM
     list($status, $rows, $new_record) = ona_get_dns_record(array('id' => $dns['id']));
 
     // Return the success notice
-    $self['error'] = "INFO => DNS record UPDATED:{$dns['id']}: {$new_record['fqdn']}";
-
-    $log_msg = "INFO => DNS record UPDATED:{$dns['id']}: ";
     $more='';
+    $log_msg='';
     foreach(array_keys($original_record) as $key) {
         if($original_record[$key] != $new_record[$key]) {
             $log_msg .= $more . $key . "[" .$original_record[$key] . "=>" . $new_record[$key] . "]";
-            $more= "; ";
+            $more= ';';
         }
     }
 
     // only print to logfile if a change has been made to the record
-    if($more != '') printmsg($log_msg, 0);
+    if($more != '') {
+      $log_msg = "DNS record UPDATED:{$dns['id']}: {$log_msg}";
+    } else {
+      $log_msg = "DNS record UPDATED:{$dns['id']}: Update attempt produced no changes.";
+    }
 
-    return(array(0, $self['error'] . "\n"));
+    printmsg($log_msg, 'notice');
+    return(array(0, $log_msg));
 }
 
 
@@ -1425,21 +1423,13 @@ EOM
 ///////////////////////////////////////////////////////////////////////
 function dns_record_del($options="") {
     global $conf, $self, $onadb;
-    printmsg("DEBUG => dns_record_del({$options}) called", 3);
 
     // Version - UPDATE on every edit!
-    $version = '1.03';
-
-    // Parse incoming options string to an array
-    $options = parse_options($options);
-
-    // Sanitize options[commit] (default is no)
-    $options['commit'] = sanitize_YN($options['commit'], 'N');
+    $version = '2.00';
 
     // Return the usage summary if we need to
-    if ($options['help'] or !$options['name']) {
-        // NOTE: Help message lines should not exceed 80 characters for proper display on a console
-        $self['error'] = 'ERROR => Insufficient parameters';
+    if (!isset($options['dns_record'])) {
+        $self['error'] = 'Insufficient parameters';
         return(array(1,
 <<<EOM
 
@@ -1478,152 +1468,114 @@ MP: TODO:  this delete will not handle DNS views unless you use the ID of the re
 */
 
     // If the name we were passed has a leading . in it then remove the dot.
-    $options['name'] = preg_replace("/^\./", '', $options['name']);
+    $options['dns_record'] = preg_replace("/^\./", '', $options['dns_record']);
+
+    if (!isset($options['type']))
+      $options['type'] = '';
 
     // FIXME: MP Fix this to use a find_dns_record function  ID only for now
-    // Find the DNS record from $options['name']
-    list($status, $rows, $dns) = ona_find_dns_record($options['name'], $options['type']);
-    printmsg("DEBUG => dns_record_del() DNS record: {$options['name']}", 3);
+    // Find the DNS record from $options['dns_record']
+    list($status, $rows, $dns) = ona_find_dns_record($options['dns_record'], $options['type']);
+    printmsg("DNS record: {$options['dns_record']}", 'debug');
     if (!$dns['id']) {
-        printmsg("DEBUG => Unknown DNS record: {$options['name']} ({$options['type']})",3);
-        $self['error'] = "ERROR => Unknown DNS record: {$options['name']} ({$options['type']})";
-        return(array(2, $self['error'] . "\n"));
+        $self['error'] = "Unknown DNS record: {$options['dns_record']} ({$options['type']})";
+        printmsg($self['error'], 'error');
+        return(array(2, $self['error']));
     }
 
 
     // Check permissions
-    if (!auth('host_del') or !authlvl($host['LVL'])) {
+    if (!auth('host_del')) {
         $self['error'] = "Permission denied!";
-        printmsg($self['error'], 0);
-        return(array(10, $self['error'] . "\n"));
+        printmsg($self['error'], 'error');
+        return(array(10, $self['error']));
     }
 
-    // If "commit" is yes, delete the host
-    if ($options['commit'] == 'Y') {
-        $text = "";
-        $add_to_error = "";
-
-        // SUMMARY:
-        //   Display any associated PTR records for an A record
-        //   Display any associated CNAMEs for an A record
-
-
-        // Test if it is used as a primary_dns_id unless it is the host_del module calling
-        if (!isset($options['delete_by_module'])) {
-            list($status, $rows, $srecord) = db_get_record($onadb, 'hosts', array('primary_dns_id' => $dns['id']));
-            if ($rows) {
-                $self['error'] = "ERROR => dns_record_del() The DNS record, {$dns['name']}.{$dns['domain_fqdn']}[{$dns['id']}], is a primary A record for a host! You can not delete it until you associate a new primary record, or delete the host.";
-                printmsg($self['error'],0);
-                return(array(5, $self['error'] . "\n"));
-            }
-        }
-
-
-        // Delete related Points to records
-        // get list for logging
-        list($status, $rows, $records) = db_get_records($onadb, 'dns', array('dns_id' => $dns['id']));
-        // do the delete
-        list($status, $rows) = db_delete_records($onadb, 'dns', array('dns_id' => $dns['id']));
-        if ($status) {
-            $self['error'] = "ERROR => dns_record_del() Child record delete SQL Query failed: {$self['error']}";
-            printmsg($self['error'],0);
-            return(array(5, $self['error'] . "\n"));
-        }
-        if ($rows) {
-            // log deletions
-            // FIXME: do better logging here
-            printmsg("INFO => {$rows} child DNS record(s) DELETED from {$dns['fqdn']}",0);
-            $add_to_error .= "INFO => {$rows} child record(s) DELETED from {$dns['fqdn']}\n";
-        }
-
-        // TRIGGER: flag the domains for rebuild
-        foreach($records as $record) {
-            list($status, $rows) = db_update_record($onadb, 'dns_server_domains', array('domain_id' => $record['domain_id']), array('rebuild_flag' => 1));
-            if ($status) {
-                $self['error'] = "ERROR => dns_record_del() Unable to update rebuild flags for domain.: {$self['error']}";
-                printmsg($self['error'],0);
-                return(array(7, $self['error'] . "\n"));
-            }
-        }
-
-
-        // Delete the DNS record
-        list($status, $rows) = db_delete_records($onadb, 'dns', array('id' => $dns['id']));
-        if ($status) {
-            $self['error'] = "ERROR => dns_record_del() DNS record delete SQL Query failed: {$self['error']}";
-            printmsg($self['error'],0);
-            return(array(5, $add_to_error . $self['error'] . "\n"));
-        }
-
-        // TRIGGER: flag the current dnsrecords domain for rebuild
-        list($status, $rows) = db_update_record($onadb, 'dns_server_domains', array('domain_id' => $dns['domain_id']), array('rebuild_flag' => 1));
-        if ($status) {
-            $self['error'] = "ERROR => dns_record_del() Unable to update rebuild flags for domain.: {$self['error']}";
-            printmsg($self['error'],0);
-            return(array(7, $self['error'] . "\n"));
-        }
-
-        // FIXME: if it is a NS or something display a proper FQDN message here
-        // Display proper PTR information
-        if ($dns['type'] == 'PTR') {
-            list($status, $rows, $pointsto) = ona_get_dns_record(array('id' => $dns['dns_id']), '');
-            list($status, $rows, $ptrint) = ona_get_interface_record(array('id' => $dns['interface_id']), '');
-
-            $ipflip = ip_mangle($ptrint['ip_addr'],'flip');
-            $octets = explode(".",$ipflip);
-            if (count($octets) > 4) {
-                $arpa = '.ip6.arpa';
-                $octcount = 31;
-            } else {
-                $arpa = '.in-addr.arpa';
-                $octcount = 3;
-            }
-            $dns['fqdn'] = "{$ipflip}{$arpa} -> {$pointsto['fqdn']}";
-        }
-
-        // Return the success notice
-        $self['error'] = "INFO => DNS {$dns['type']} record DELETED: {$dns['fqdn']}";
-        printmsg($self['error'], 0);
-        return(array(0, $add_to_error . $self['error'] . "\n"));
-    }
-
-
-    //
-    // We are just displaying records that would have been deleted
-    //
+    $text = '';
+    $add_to_error = '';
 
     // SUMMARY:
     //   Display any associated PTR records for an A record
     //   Display any associated CNAMEs for an A record
 
 
-    // Otherwise just display the host record for the host we would have deleted
-    $text = "Record(s) NOT DELETED (see \"commit\" option)\n" .
-            "Displaying record(s) that would have been deleted:\n";
-
-    // Test if it is used as a primary_dns_id
-    list($status, $rows, $srecord) = db_get_record($onadb, 'hosts', array('primary_dns_id' => $dns['id']));
-    if ($rows) {
-        $text .= "\nWARNING!  This DNS record is a primary A record for a host\n";
+    // Test if it is used as a primary_dns_id unless it is the host_del module calling
+    if (!isset($options['delete_by_module'])) {
+        list($status, $rows, $srecord) = db_get_record($onadb, 'hosts', array('primary_dns_id' => $dns['id']));
+        if ($rows) {
+            $self['error'] = "The DNS record, {$dns['dns_record']}.{$dns['domain_fqdn']}[{$dns['id']}], is a primary A record for a host! You can not delete it until you associate a new primary record, or delete the host.";
+            printmsg($self['error'],'error');
+            return(array(5, $self['error']));
+        }
     }
-    // Display the complete dns record
-    list($status, $tmp) = dns_record_display("name={$dns['id']}&verbose=N");
-    $text .= "\n" . $tmp;
 
-    // Display associated Child records
+
+    // Delete related Points to records
+    // get list for logging
     list($status, $rows, $records) = db_get_records($onadb, 'dns', array('dns_id' => $dns['id']));
-    if ($rows) $text .= "\nASSOCIATED POINTS-TO RECORDS ({$rows}):\n";
-    foreach ($records as $record) {
-        if ($record['type'] == 'NS') $record['name'] = '';
-        // FIXME:I could fix this but I'm lazy
-        if ($record['type'] == 'PTR') $record['name'] = '??';
-        list($status, $rows, $domain) = ona_get_domain_record(array('id' => $record['domain_id']), '');
-        $text .= " {$record['type']}: {$record['name']}.{$domain['fqdn']} -> {$dns['fqdn']}\n";
+    // do the delete
+    list($status, $rows) = db_delete_records($onadb, 'dns', array('dns_id' => $dns['id']));
+    if ($status) {
+        $self['error'] = "Child record delete SQL Query failed: {$self['error']}";
+        printmsg($self['error'],'error');
+        return(array(5, $self['error']));
+    }
+    if ($rows) {
+        // log deletions
+        // FIXME: do better logging here
+        $add_to_error .= "{$rows} child record(s) DELETED from {$dns['fqdn']}";
+        printmsg($add_to_error,'notice');
+    }
+
+    // TRIGGER: flag the domains for rebuild
+    foreach($records as $record) {
+        list($status, $rows) = db_update_record($onadb, 'dns_server_domains', array('domain_id' => $record['domain_id']), array('rebuild_flag' => 1));
+        if ($status) {
+            $self['error'] = "Unable to update rebuild flags for domain.: {$self['error']}";
+            printmsg($self['error'],'error');
+            return(array(7, $self['error']));
+        }
     }
 
 
+    // Delete the DNS record
+    list($status, $rows) = db_delete_records($onadb, 'dns', array('id' => $dns['id']));
+    if ($status) {
+        $self['error'] = "DNS record delete SQL Query failed: {$self['error']}";
+        printmsg($self['error'],'error');
+        return(array(5, $add_to_error . $self['error']));
+    }
 
-    return(array(7, $text));
+    // TRIGGER: flag the current dnsrecords domain for rebuild
+    list($status, $rows) = db_update_record($onadb, 'dns_server_domains', array('domain_id' => $dns['domain_id']), array('rebuild_flag' => 1));
+    if ($status) {
+        $self['error'] = "Unable to update rebuild flags for domain.: {$self['error']}";
+        printmsg($self['error'],'error');
+        return(array(7, $self['error']));
+    }
+
+    // FIXME: if it is a NS or something display a proper FQDN message here
+    // Display proper PTR information
+    if ($dns['type'] == 'PTR') {
+        list($status, $rows, $pointsto) = ona_get_dns_record(array('id' => $dns['dns_id']), '');
+        list($status, $rows, $ptrint) = ona_get_interface_record(array('id' => $dns['interface_id']), '');
+
+        $ipflip = ip_mangle($ptrint['ip_addr'],'flip');
+        $octets = explode(".",$ipflip);
+        if (count($octets) > 4) {
+            $arpa = '.ip6.arpa';
+            $octcount = 31;
+        } else {
+            $arpa = '.in-addr.arpa';
+            $octcount = 3;
+        }
+        $dns['fqdn'] = "{$ipflip}{$arpa} -> {$pointsto['fqdn']}";
+    }
+
+    // Return the success notice
+    $self['error'] = "DNS {$dns['type']} record DELETED: {$dns['fqdn']}";
+    printmsg($self['error'], 'notice');
+    return(array(0, $add_to_error . $self['error']));
 }
 
 
@@ -1658,56 +1610,36 @@ function dns_record_display($options="") {
     global $conf, $self, $onadb;
 
     // Version - UPDATE on every edit!
-    $version = '1.00';
+    $version = '2.00';
 
-    printmsg("DEBUG => dns_record_display({$options}) called", 3);
-
-    // Parse incoming options string to an array
-    $options = parse_options($options);
+    $text_array = array();
+    $text_array['module_version'] = $version;
 
     // Sanitize options[verbose] (default is yes)
-    $options['verbose'] = sanitize_YN($options['verbose'], 'Y');
+    if (isset($options['verbose']))
+      $options['verbose'] = sanitize_YN($options['verbose'], 'Y');
 
     // Return the usage summary if we need to
-    if ($options['help'] or !$options['name'] ) {
-        // NOTE: Help message lines should not exceed 80 characters for proper display on a console
-        $self['error'] = 'ERROR => Insufficient parameters';
-        return(array(1,
-<<<EOM
-
-dns_record_display-v{$version}
-Displays a DNS record from the database
-
-  Synopsis: dns_record_display [KEY=VALUE] ...
-
-  Required:
-    name=NAME[.DOMAIN] or ID      hostname or ID of the dns record to display
-
-  Optional:
-    verbose=[yes|no]              display additional info (yes)
-
-\n
-EOM
-
-        ));
+    if (!isset($options['dns_record']) ) {
+        $self['error'] = 'Insufficient parameters';
+        return(array(1,$self['error']));
     }
 
 
     // If the name we were passed has a leading . in it then remove the dot.
-    $options['name'] = preg_replace("/^\./", '', $options['name']);
+    $options['dns_record'] = preg_replace("/^\./", '', $options['dns_record']);
 
-    // Find the DNS record from $options['name']
-    list($status, $rows, $record) = ona_find_dns_record($options['name']);
-    printmsg("DEBUG => dns_record_del() DNS record: {$record['name']}", 3);
+    // Find the DNS record from $options['dns_record']
+    list($status, $rows, $record) = ona_find_dns_record($options['dns_record']);
     if (!$record['id']) {
-        printmsg("DEBUG => Unknown DNS record: {$options['name']}",3);
-        $self['error'] = "ERROR => Unknown DNS record: {$options['name']}";
-        return(array(2, $self['error'] . "\n"));
+        $self['error'] = "Unknown DNS record: {$options['dns_record']}";
+        printmsg($self['error'], 'error');
+        return(array(2, $self['error']));
     }
 
     // Build text to return
-    $text  = "DNS {$record['type']} RECORD ({$record['fqdn']})\n";
-    $text .= format_array($record);
+ #   $text  = "DNS {$record['type']} RECORD ({$record['fqdn']})\n";
+ #   $text .= format_array($record);
 
     // If 'verbose' is enabled, grab some additional info to display
     if ($options['verbose'] == 'Y') {
@@ -1717,9 +1649,9 @@ EOM
         do {
             list($status, $rows, $ptr) = ona_get_dns_record(array('dns_id' => $record['id'],'type' => 'PTR'));
             if ($rows == 0) { break; }
+            ksort($ptr);
+            $text_array['associated_dns_records']['ptr'][$i] = $ptr;
             $i++;
-            $text .= "\nASSOCIATED PTR RECORD ({$i} of {$rows})\n";
-            $text .= format_array($ptr);
         } while ($i < $rows);
 
         // CNAME record(s)
@@ -1727,32 +1659,26 @@ EOM
         do {
             list($status, $rows, $cname) = ona_get_dns_record(array('dns_id' => $record['id'],'type' => 'CNAME'));
             if ($rows == 0) { break; }
+            ksort($cname);
+            $text_array['associated_dns_records']['cname'][$i] = $cname;
             $i++;
-            $text .= "\nASSOCIATED CNAME RECORD ({$i} of {$rows})\n";
-            $text .= format_array($cname);
         } while ($i < $rows);
-
 
 // FIXME: MP display other types of records like NS,MX,SRV etc etc, also support dns views better
 
 
     }
 
+    // Select just the fields requested
+    if (isset($options['fields'])) {
+      $fields = explode(',', $options['fields']);
+      $record = array_intersect_key($record, array_flip($fields));
+    }
+
+    ksort($record);
+    $text_array['dns_records'][0] = $record;
+
     // Return the success notice
-    return(array(0, $text));
+    return(array(0, $text_array));
 
 }
-
-
-
-
-
-
-
-
-
-
-
-
-// DON'T put whitespace at the beginning or end of this file!!!
-?>
