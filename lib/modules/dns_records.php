@@ -2,6 +2,197 @@
 
 
 
+/////////////////////
+
+// Return subnets from the database
+// Allows filtering and other options to narrow the data down
+
+/////////////////////
+function dns_records($options="") {
+    global $self, $onadb;
+    printmsg('Called with options: ('.implode (";",$options).')', 'info');
+
+    // Version - UPDATE on every edit!
+    $version = '2.00';
+
+    $text_array = array();
+    $text_array['module_version'] = $version;
+
+
+
+    // Start building the "where" clause for the sql query to find the records to display
+    $where = '';
+    $and = '';
+    $orderby = '';
+
+    // enable or disable wildcards
+    $wildcard = '';
+    #if ($form['nowildcard']) $wildcard = '';
+
+    // RECORD ID
+    if (isset($options['id'])) {
+        $where .= $and . "id = " . $onadb->qstr($options['id']);
+        $and = " AND ";
+    }
+
+    // DNS VIEW ID
+    if (isset($options['dns_view'])) {
+        if (is_string($options['dns_view'])) list($status, $rows, $dnsview) = ona_get_dns_view_record(array('name' => $options['dns_view']));
+        if (is_numeric($options['dns_view'])) list($status, $rows, $dnsview) = ona_get_dns_view_record(array('id' => $options['dns_view']));
+        $where .= $and . "dns_view_id = " . $onadb->qstr($dnsview['id']);
+        $and = " AND ";
+    }
+
+    // INTERFACE ID
+    if (isset($options['interface_id'])) {
+        $where .= $and . "interface_id = " . $onadb->qstr($options['interface_id']);
+        $and = " AND ";
+    }
+
+    // DNS RECORD note
+    if (isset($options['notes'])) {
+        $where .= $and . "notes LIKE " . $onadb->qstr($wildcard.$options['notes'].$wildcard);
+        $and = " AND ";
+    }
+
+    // DNS RECORD TYPE
+    if (isset($options['type'])) {
+        $where .= $and . "type = " . $onadb->qstr($options['type']);
+        $and = " AND ";
+    }
+
+    // HOSTNAME
+    if (isset($options['hostname'])) {
+        $where .= $and . "id IN (SELECT id " .
+                                "  FROM dns " .
+                                "  WHERE name LIKE " . $onadb->qstr($wildcard.$options['hostname'].$wildcard) ." )";
+        $and = " AND ";
+    }
+
+
+    // DOMAIN
+    if (isset($options['domain'])) {
+        list($status,$rows,$tmpdomain) = ona_find_domain($options['domain']);
+        if (!$rows) {
+          $tmpdomain['id'] = 0;
+        }
+        $where .= $and . "domain_id = " . $onadb->qstr($tmpdomain['id']);
+        $orderby .= "name, domain_id";
+        $and = " AND ";
+    }
+
+    // DOMAIN ID
+    if (isset($options['domain_id'])) {
+        //$where .= $and . "primary_dns_id IN ( SELECT id " .
+        //                                    "  FROM dns " .
+        //                                    "  WHERE domain_id = " . $onadb->qstr($options['domain_id']) . " )  ";
+        $where .= $and . "domain_id = " . $onadb->qstr($options['domain_id']);
+        $orderby .= "name, domain_id";
+        $and = " AND ";
+    }
+
+    // IP ADDRESS
+    $ip = $ip_end = '';
+    if (isset($options['ip'])) {
+        // Build $ip and $ip_end from $options['ip'] and $options['ip_thru']
+        $ip = ip_complete($options['ip'], '0');
+        if (isset($options['ip_thru'])) { $ip_end = ip_complete($options['ip_thru'], '255'); }
+        else { $ip_end = ip_complete($options['ip'], '255'); }
+
+        // Find out if $ip and $ip_end are valid
+        $ip = ip_mangle($ip, 'numeric');
+        $ip_end = ip_mangle($ip_end, 'numeric');
+        if ($ip != -1 and $ip_end != -1) {
+            // We do a sub-select to find interface id's between the specified ranges
+            $where .= $and . "interface_id IN ( SELECT id " .
+                             "        FROM interfaces " .
+                             "        WHERE ip_addr >= " . $onadb->qstr($ip) . " AND ip_addr <= " . $onadb->qstr($ip_end) . " )";
+            $and = " AND ";
+        }
+    }
+
+
+    // Wild card .. if $while is still empty, add a 'ID > 0' to it so you see everything.
+    if ($where == '')
+        $where = 'id > 0';
+
+    // If we dont have DNS views turned on, limit data to just the default view.
+    // Even if there is data associated with other views, ignore it
+    if (!isset($options['dns_views'])) {
+        $where .= ' AND dns_view_id = 0';
+    }
+
+
+    // If we get a specific host to look for we must do the following
+    // 1. get (A) records that match any interface_id associated with the host
+    // 2. get CNAMES that point to dns records that are using an interface_id associated with the host
+    if (isset($options['host_id'])) {
+        // If we dont have DNS views turned on, limit data to just the default view.
+        // Even if there is data associated with other views, ignore it
+        // MP: something strange with this, it should only limit to default view.. sometimes it does not???
+        if (!isset($options['dns_views'])) {
+            $hwhere .= 'dns_view_id = 0 AND ';
+        }
+
+        // Get the host record so we know what the primary interface is
+        list($status, $rows, $host) = ona_get_host_record(array('id' => $options['host_id']), '');
+
+        list ($status, $rows, $dns_records) =
+        db_get_records(
+            $onadb,
+            'dns',
+            $hwhere.'interface_id in (select id from interfaces where host_id = '. $onadb->qstr($options['host_id']) .') OR interface_id in (select interface_id from interface_clusters where host_id = '. $onadb->qstr($options['host_id']) .')',
+            "type",
+            $conf['search_results_per_page'],
+            $offset
+        );
+
+
+    } else {
+        list ($status, $rows, $dns_records) =
+            db_get_records(
+                $onadb,
+                'dns',
+                $where,
+                $orderby
+               # $conf['search_results_per_page'],
+               # $offset
+            );
+    }
+
+
+    if (!$rows) {
+      $text_array['status_msg'] = "No DNS records were found";
+      return(array(0, $text_array));
+    }
+
+
+
+    $i=0;
+    foreach ($dns_records as $dns_record) {
+      // get subnet type name
+      list($status, $rows, $domain) = ona_get_domain_record(array('id' => $dns_record['domain_id']));
+      $dns_record['fqdn'] = $dns_record['name'].'.'.$domain['fqdn'];
+
+      // Select just the fields requested
+      if (isset($options['fields'])) {
+        $fields = explode(',', $options['fields']);
+        $dns_record = array_intersect_key($dns_record, array_flip($fields));
+      }
+
+      ksort($dns_record);
+      $text_array['dns_records'][$i]=$dns_record;
+
+      $i++;
+    }
+
+    $text_array['count'] = count($dns_records);
+
+    // Return the success notice
+    return(array(0, $text_array));
+}
+
+
 ///////////////////////////////////////////////////////////////////////
 //  Function: dns_record_add (string $options='')
 //

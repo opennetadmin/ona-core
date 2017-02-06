@@ -1381,7 +1381,7 @@ function ona_find_host($search="") {
     if (!isset($domain['id'])) {
         printmsg("Unable to determine domain name portion of ({$search})!", 'notice');
         $self['error'] = "Unable to determine domain name portion of ({$search})!";
-        return(array(3, $self['error'] . "\n"));
+        return(array(3, $self['error']));
     }
     printmsg("Returned: {$domain['fqdn']}", 'debug');
 
