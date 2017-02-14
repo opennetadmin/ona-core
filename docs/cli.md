@@ -26,7 +26,7 @@ Usage Examples
 * Configure secure storage for your token
     touch ~/.onatoken;chmod 600 ~/.onatoken
 * Tell this shell instance where the base API endpoint is that `resty` should use
-    . resty http://localhost/rest.php/v1
+    . resty -W http://localhost/rest.php/v1
 
 * Log in to get your token and store it in a secure place
     POST /login -q "user=admin&pass=admin"|jq -r .token > ~/.onatoken
@@ -47,3 +47,5 @@ Usage Examples
     POST /subnets -d name=BLAHTEST -d type=13 -d ip=192.168.10.0 -d netmask=255.255.255.0|jq
 * Delete the subnet we just added
     DELETE /subnets/blahtest|jq
+* Get a list of hostnames for all hosts that have a manufacturer of Cisco
+    GET /hosts -q manufacturer=Cisco|jq -r '.hosts | .[].fqdn'

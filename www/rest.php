@@ -80,6 +80,40 @@ $app->group('/v1', function () {
     });
   });
 
+  $this->group('/interfaces', function () {
+    new ONA\controllers\interfaces($this);
+    # HMM should I force adding interfaces under /hosts? or allow here too?
+    $this->map(['GET'], '', 'ONA\controllers\interfaces:Any');
+
+    $this->group('/{interface}', function () {
+      $this->map(['GET', 'DELETE', 'POST'], '', 'ONA\controllers\interfaces:Specific');
+    });
+  });
+
+  $this->group('/hosts', function () {
+    new ONA\controllers\hosts($this);
+    $this->map(['GET', 'POST'], '', 'ONA\controllers\hosts:Any');
+
+    $this->group('/{host}', function () {
+      $this->map(['GET', 'DELETE', 'POST'], '', 'ONA\controllers\hosts:Specific');
+      $this->map(['GET', 'DELETE', 'POST'], '/tags', 'ONA\controllers\hosts:tags');
+      // This is an alt method for tags.. seems 'simpler'? decide if we keep it. not 'consistant'
+     # $this->map(['GET', 'DELETE', 'POST'], '/tags/{name}', 'ONA\controllers\hosts:tags');
+      $this->map(['GET', 'DELETE', 'POST'], '/ca', 'ONA\controllers\hosts:ca');
+
+      $this->group('/interfaces', function () {
+        new ONA\controllers\interfaces($this);
+        $this->map(['GET', 'POST'], '', 'ONA\controllers\interfaces:Any');
+
+        ## This could get weird, the host portion of the path really doesnt matter here??
+        $this->group('/{interface}', function () {
+          $this->map(['GET', 'DELETE', 'POST'], '', 'ONA\controllers\interfaces:Specific');
+        });
+      });
+    });
+  });
+
+
 })->add(new ONA\auth\tokenauth());
  
 // Run our slim app
