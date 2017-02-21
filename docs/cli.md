@@ -40,7 +40,7 @@ Usage Examples
 * Get a list of all the subnets and pretty print it
     GET /subnets|jq
 * Get a list of all subnets but only return the id and name for each one.
-    GET /subnets -q "filter=id,name" |jq .subnets
+    GET /subnets -q "fields=id,name" |jq .subnets
 * Add a new subnet using form-data in URL format
     POST /subnets -d 'name=BLAHTEST&type=13&ip=192.168.10.0&netmask=255.255.255.0'|jq
 * or use discreate `-d` data fields
