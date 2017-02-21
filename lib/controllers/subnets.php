@@ -56,6 +56,17 @@ class Subnets {
    }
 
 
+   public function nextip($request, $response, $args) {
+
+     $output = process_output(subnet_nextip($args+ (array)$request->getQueryParams()));
+
+     // update status code on errors
+     if ($output['status_code'] > 0) {
+       return $response->withJson($output)->withStatus(400);
+     }
+
+     return $response->withJson($output);
+   }
 
 
    public function tags($request, $response, $args) {

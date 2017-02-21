@@ -59,6 +59,7 @@ $app->group('/v1', function () {
       $this->map(['GET', 'DELETE', 'POST'], '/dhcpserver', 'ONA\controllers\subnets:dhcp');
       $this->map(['GET', 'DELETE', 'POST'], '/dhcppool', 'ONA\controllers\subnets:dhcp');
       $this->map(['GET', 'DELETE', 'POST'], '/dhcpoption', 'ONA\controllers\subnets:dhcp');
+      $this->map(['GET'], '/nextip', 'ONA\controllers\subnets:nextip');
     });
   });
 

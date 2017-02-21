@@ -125,7 +125,7 @@ function subnets($options="") {
 
     // custom attribute value
     if (isset($options['cavalue'])) {
-        $where .= $and . "id in (select table_id_ref from custom_attributes where table_name_ref like 'subnets' {$cavaluetype} and value like " . $onadb->qstr($wildcard.$options['cavalue'].$wildcard) . ")";
+        $where .= $and . "id in (select table_id_ref from custom_attributes where table_name_ref like 'subnets' {$cavaluetype} and value like " . $onadb->qstr($options['cavalue']) . ")";
         $and = " AND ";
     }
 
@@ -778,7 +778,7 @@ function subnet_modify($options="") {
     // Return the (human-readable) success notice
     $text = format_array($SET);
     $self['error'] = "Subnet UPDATED";
-    return(array(0, $self['error'] . ":\n{$text}\n"));
+    return(array(0, $self['error'] . ":{$text}"));
 }
 
 
@@ -1006,33 +1006,13 @@ function subnet_nextip($options="") {
     global $conf, $self, $onadb;
 
     // Version - UPDATE on every edit!
-    $version = '1.00';
-
-    printmsg('Called with options: ('.implode (";",$options).')', 'info');
+    $version = '2.00';
 
     // Return the usage summary if we need to
     if (!isset($options['subnet'])) {
         $self['error'] = 'Insufficient parameters';
-        return(array(1,
-<<<EOM
-
-subnet_nextip-v{$version}
-Return the next available IP address on a subnet.
-
-  Synopsis: subnet_nextip [KEY=VALUE] ...
-
-  Required:
-    subnet=IP or ID               select subnet by search string
-
-  Optional:
-    offset=NUMBER                 Starting offset to find next available IP
-    output=[dotted|numeric]       Return the number as a dotted or numeric value
-                                  DEFAULT: numeric
-\n
-EOM
-        ));
+        return(array(1,$self['error']));
     }
-
 
     // Find the subnet record we're deleting
     list($status, $rows, $subnet) = ona_find_subnet($options['subnet']);
@@ -1059,18 +1039,13 @@ EOM
         return(array(4, $self['error']));
     }
 
-    if (!isset($options['output'])) {
-        $options['output'] = '1';
-    }
-
-    // check output option is dotted or numeric
-    else if ($options['output'] != 'dotted' && $options['output'] != 'numeric') {
-        $self['error'] = "Output option must be 'dotted' or 'numeric'";
-        return(array(5, $self['error']));
-    }
-
     // Find the first number based on our subnet and offset
-    $ip = $subnet['ip_addr'] + $options['offset'];
+    // if it is an IP, use that as our starting point, otherwise use subnet base.
+    if (preg_match("/[a-z]/i", $options['subnet'])) {
+      $ip = $subnet['ip_addr'] + $options['offset'];
+    } else {
+      $ip = ip_mangle($options['subnet'], 'numeric') + $options['offset'];
+    }
 
     // Make sure we skip past the subnet IP to the first usable IP
     if ($ip == $subnet['ip_addr']) $ip++;
@@ -1095,8 +1070,10 @@ EOM
         return(array(5, $self['error']));
     }
 
+    $text_array = array();
+    $text_array['ip_addr'] = ip_mangle($ip,'numeric');
+    $text_array['ip_addr_text'] = ip_mangle($ip,'dotted');
+
     // return the IP
-    return(array(0, ip_mangle($ip,$options['output'])."\n"));
-
-
+    return(array(0, $text_array));
 }
