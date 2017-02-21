@@ -305,22 +305,21 @@ and d.domain_id = ". $onadb->qstr($domain['id']). "
 
     // tag
     if (isset($options['tag'])) {
-        $where .= $and . "h.id in (select reference from tags where type like 'host' and name like " . $onadb->qstr($options['tag']) . ")";
+        $where .= $and . "h.id in (select reference from tags where type like 'host' and name in ('". implode('\',\'', explode (',',$options['tag']) ) . "'))";
         $and = " AND ";
-
     }
 
     // custom attribute type
-    if (isset($options['custom_attribute_type'])) {
-        $where .= $and . "h.id in (select table_id_ref from custom_attributes where table_name_ref like 'hosts' and custom_attribute_type_id = (SELECT id FROM custom_attribute_types WHERE name = " . $onadb->qstr($options['custom_attribute_type']) . "))";
+    if (isset($options['catype'])) {
+        $where .= $and . "h.id in (select table_id_ref from custom_attributes where table_name_ref like 'hosts' and custom_attribute_type_id = (SELECT id FROM custom_attribute_types WHERE name = " . $onadb->qstr($options['catype']) . "))";
         $and = " AND ";
-        $cavaluetype = "and custom_attribute_type_id = (SELECT id FROM custom_attribute_types WHERE name = " . $onadb->qstr($options['custom_attribute_type']) . ")";
+        $cavaluetype = "and custom_attribute_type_id = (SELECT id FROM custom_attribute_types WHERE name = " . $onadb->qstr($options['catype']) . ")";
 
     }
 
     // custom attribute value
-    if (isset($options['ca_value'])) {
-        $where .= $and . "h.id in (select table_id_ref from custom_attributes where table_name_ref like 'hosts' {$cavaluetype} and value like " . $onadb->qstr($wildcard.$options['ca_value'].$wildcard) . ")";
+    if (isset($options['cavalue'])) {
+        $where .= $and . "h.id in (select table_id_ref from custom_attributes where table_name_ref like 'hosts' {$cavaluetype} and value like " . $onadb->qstr($options['cavalue']) . ")";
         $and = " AND ";
     }
 
@@ -344,7 +343,7 @@ order by b.ip_addr) h";
         $and = " AND ";
     }
 
-    // Wild card .. if $while is still empty, add a 'ID > 0' to it so you see everything.
+    // if $while is still empty, add a 'ID > 0' to it so you see everything.
     if ($where == '') {
         $where = 'h.id > 0';
     }
@@ -358,6 +357,11 @@ order by b.ip_addr) h";
             $orderby
         );
 
+
+    if (!$rows) {
+      $text_array['status_msg'] = "No host records were found";
+      return(array(0, $text_array));
+    }
 
     $i=0;
     foreach ($hosts as $host) {
