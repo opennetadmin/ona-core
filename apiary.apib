@@ -4,16 +4,16 @@ HOST: https://localhost/rest.php/v1
 # OpenNetAdmin API
   The ONA api info
 
-# Plugins
+# Group Plugins
 
 It is possible to extend ONA with the use of plugins.  Some of these plugins provide their own API endpoints. The following link will show the installed plugins and provide documentation links if available.
 
-[Plugin documenation index](local/plugins)
+### [Plugin documenation index](local/plugins)
 
 
 
 
-# Authentication
+# Group Authentication
 
 Authentication is handled by the use of a JWT token.
 This token must be passed in the `Authorization` header of each transaction.
@@ -24,9 +24,9 @@ Tokens are subject to an expiration time as well as only being valid when coming
 
 To secure your transaction you should configure SSL encryption.
 
-# Group Login
+All endpoints can return the `403` HTTP response which indicates an authentication problem. The `status_msg` will contain text describing the specific issue.
 
-## Auth [/login{?user,pass}]
+## Login [/login{?user,pass}]
 
 ### Login [POST]
 Use the token field from the resulting json for Authentication.
@@ -44,8 +44,7 @@ Use the token field from the resulting json for Authentication.
         {"status_code": 1, "status_msg": "Authentication token not sent" }
 
 + Response 403 (application/json;charset=utf-8)
-
-        {"status_code": 1, "status_msg": "Token Issue: some sort of error" }
+  + Attributes (403error)
 
 
 
@@ -53,6 +52,8 @@ Use the token field from the resulting json for Authentication.
 
 
 # Group Subnets
+
+Subnets are where ONA stores the IP and network mask for a network. A subnet must exist in the system before and IP addresses can be placed on hosts.
 
 ## Subnet list [/subnets{?name,type,ip,endip,tag,catype,cavalue,fields}]
 
@@ -73,10 +74,6 @@ List all subnets in ONA. Optionally provide search parameters to narrow the retu
 + Response 200 (application/json;charset=utf-8)
   + Attributes (Subnets)
 
-+ Response 403 (application/json;charset=utf-8)
-
-        {"status_code": 1, "status_msg": "Token Issue: some sort of error" }
-
 ### Create a new subnet [POST]
 
 Creates a new subnet
@@ -86,10 +83,6 @@ Creates a new subnet
 
 + Response 201 (application/json;charset=utf-8)
   + Attributes (Subnets)
-
-+ Response 403 (application/json;charset=utf-8)
-
-        {"status_code": 1, "status_msg": "Token Issue: some sort of error" }
 
 ## Subnet [/subnets/{subnet}{?verbose,fields}]
 Perform operations on a specific subnet
@@ -104,10 +97,6 @@ Return information about a single subnet.  Optionally get a verbose output of in
 
 + Response 200 (application/json;charset=utf-8)
   + Attributes (Subnets)
-
-+ Response 403 (application/json;charset=utf-8)
-
-        {"status_code": 1, "status_msg": "Token Issue: some sort of error" }
 
 ### Modify single subnet [POST]
 Modify a subnet and set new values
@@ -165,38 +154,37 @@ it is simpler to just specify a direct IP to start looking for an available.
 
 
 
+
+
+
+
+
 # Group Domains
+
+A Domain is where ONA stores attributes about a DNS domain. Domains are typically analogus to DNS Zones and are where DNS host names are defined.  A domain must exist in ONA before any hosts can be created. Attributes related to the SOA record are defined here.
 
 ## Domain list [/domains{?name,fields}]
 
 ### List all domains [GET]
 List all domains
 
-TODO: NOTE: domain query on dns_record will not allow % on the string.  note that in docs here
-
 + Parameters
   + fields: `id,name` (optional) - A comma separated list of specific result fields to return.
 
 + Response 200 (application/json;charset=utf-8)
-  + Attributes (Subnets)
-
-+ Response 403 (application/json;charset=utf-8)
-
-        {"status_code": 1, "status_msg": "Token Issue: some sort of error" }
+  + Attributes (Domains)
 
 ### Create a new domain [POST]
 
 Creates a new domain
+
+The `sys_config` table stores default values for `dns_domain`. These defaults will be used unless specific new values are provided
 
 + Request (application/json)
   + Attributes (Domains)
 
 + Response 201 (application/json;charset=utf-8)
   + Attributes (Domains)
-
-+ Response 403 (application/json;charset=utf-8)
-
-        {"status_code": 1, "status_msg": "Token Issue: some sort of error" }
 
 ## Domain [/domains/{domain}{?fields}]
 Perform operations on a specific domain
@@ -211,7 +199,21 @@ Return information about a single domain.
 + Response 200 (application/json;charset=utf-8)
   + Attributes (Domains)
 
-+ Response 403 (application/json;charset=utf-8)
+### Modify single domain [POST]
+Modify a domain and set new values
+
+You can set one or more attributes in your request.
+
++ Parameters
+  + domain: `example.com` - Name of domain.
+
++ Request (application/json)
+  + Attributes (Domain Modify)
+
++ Response 200 (application/json;charset=utf-8)
+  + Attributes (Domains)
+
++ Response 400 (application/json;charset=utf-8)
 
 ### Delete single domain [DELETE]
 Delete a domain
@@ -281,6 +283,20 @@ Delete a domain
   + name: `domaintest.com` (string) - Domain name
   + parent_id: `0` (string) - Database unique ID for parent domain record
   + primary_master: `ns1.example.com` (string) - Primary master name server to serve this domain
-  + refresh: `16384` (number) - Domain expire time in seconds, used for SOA record
-  + retry: `2048` (number) - Domain expire time in seconds, used for SOA record
-  + serial: `22233221` (number) - Domain expire time in seconds, used for SOA record
+  + refresh: `16384` (number) - Domain refresh time in seconds, used for SOA record
+  + retry: `2048` (number) - Domain retry time in seconds, used for SOA record
+  + serial: `22233221` (number) - Domain serial number, system generated, used for SOA record
+
+## `Domain Modify` (object)
+  + set_name: `example.com` (string) - New domain name
+  + set_admin: `domains@example.com` (string) - Domain admin for SOA record
+  + set_primary_master: `server.example.com` (string) - Primary DNS server for NS/SOA record
+  + set_refresh: `16384` (number) - Domain refresh time in seconds. Used in SOA record
+  + set_retry: `2048` (number) - Domain retry time in seconds. Used in SOA record
+  + set_expiry: `1048576` (number) - Domain expiry time in seconds. Used in SOA record
+  + set_minimum: `2560` (number) - Domain minimum time in seconds. Used in SOA record
+  + set_ttl: `86400` (number) - Domain default TTL time in seconds. Used in SOA record
+
+## `403error` (object)
+  + status_code: `1` - Non zero error code
+  + status_msg: `Token Issue: some sort of error` - Message about Token issue, should contain text describing specific issue
