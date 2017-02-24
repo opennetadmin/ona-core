@@ -1,19 +1,20 @@
 FORMAT: 1A
 HOST: https://localhost/rest.php/v1
 
-# OpenNetAdmin API
+OpenNetAdmin API
+================
   The ONA api info
 
-# Group Plugins
+Group Plugins
+=============
 
 It is possible to extend ONA with the use of plugins.  Some of these plugins provide their own API endpoints. The following link will show the installed plugins and provide documentation links if available.
 
-### [Plugin documenation index](local/plugins)
+# [Plugin documenation index](local/plugins)
 
 
-
-
-# Group Authentication
+Group Authentication
+====================
 
 Authentication is handled by the use of a JWT token.
 This token must be passed in the `Authorization` header of each transaction.
@@ -26,9 +27,9 @@ To secure your transaction you should configure SSL encryption.
 
 All endpoints can return the `403` HTTP response which indicates an authentication problem. The `status_msg` will contain text describing the specific issue.
 
-## Login [/login{?user,pass}]
+# Login [/login{?user,pass}]
 
-### Login [POST]
+## Login [POST]
 Use the token field from the resulting json for Authentication.
 
 + Parameters
@@ -51,13 +52,12 @@ Use the token field from the resulting json for Authentication.
 
 
 
-# Group Subnets
+Group Subnets
+=============
 
 Subnets are where ONA stores the IP and network mask for a network. A subnet must exist in the system before and IP addresses can be placed on hosts.
 
-## Subnet list [/subnets{?name,type,ip,endip,tag,catype,cavalue,fields}]
-
-### List all subnets [GET]
+# List multiple subnets [GET /subnets{?name,type,ip,endip,tag,catype,cavalue,fields}]
 
 List all subnets in ONA. Optionally provide search parameters to narrow the returned list.
 
@@ -74,7 +74,7 @@ List all subnets in ONA. Optionally provide search parameters to narrow the retu
 + Response 200 (application/json;charset=utf-8)
   + Attributes (Subnets)
 
-### Create a new subnet [POST]
+# Create a new subnet [POST /subnets]
 
 Creates a new subnet
 
@@ -84,10 +84,9 @@ Creates a new subnet
 + Response 201 (application/json;charset=utf-8)
   + Attributes (Subnets)
 
-## Subnet [/subnets/{subnet}{?verbose,fields}]
-Perform operations on a specific subnet
+# Specific Subnet [/subnets/{subnet}{?verbose,fields}]
 
-### List single subnet [GET]
+## List single subnet [GET]
 Return information about a single subnet.  Optionally get a verbose output of information.
 
 + Parameters
@@ -98,7 +97,7 @@ Return information about a single subnet.  Optionally get a verbose output of in
 + Response 200 (application/json;charset=utf-8)
   + Attributes (Subnets)
 
-### Modify single subnet [POST]
+## Modify single subnet [POST]
 Modify a subnet and set new values
 
 When setting a `vlan` you must also provide the `campus`.
@@ -116,7 +115,7 @@ You can set one or more attributes in your request.
 
 + Response 400 (application/json;charset=utf-8)
 
-### Delete single subnet [DELETE]
+## Delete single subnet [DELETE]
 Delete a subnet
 
 + Parameters
@@ -125,9 +124,7 @@ Delete a subnet
 + Response 204 (application/json;charset=utf-8)
 
 
-## Subnet [/subnets/{subnet}/nextip/{?offset}]
-
-### Get next available IP [GET]
+## Get next available IP [GET /subnets/{subnet}/nextip/{?offset}]
 Request the next available IP address on a subnet
 
 If you use the network name for the `subnet` identifier the starting point
@@ -151,89 +148,7 @@ it is simpler to just specify a direct IP to start looking for an available.
           "status_msg": ""
         }
 
-
-
-
-
-
-
-
-
-# Group Domains
-
-A Domain is where ONA stores attributes about a DNS domain. Domains are typically analogus to DNS Zones and are where DNS host names are defined.  A domain must exist in ONA before any hosts can be created. Attributes related to the SOA record are defined here.
-
-## Domain list [/domains{?name,fields}]
-
-### List all domains [GET]
-List all domains
-
-+ Parameters
-  + fields: `id,name` (optional) - A comma separated list of specific result fields to return.
-
-+ Response 200 (application/json;charset=utf-8)
-  + Attributes (Domains)
-
-### Create a new domain [POST]
-
-Creates a new domain
-
-The `sys_config` table stores default values for `dns_domain`. These defaults will be used unless specific new values are provided
-
-+ Request (application/json)
-  + Attributes (Domains)
-
-+ Response 201 (application/json;charset=utf-8)
-  + Attributes (Domains)
-
-## Domain [/domains/{domain}{?fields}]
-Perform operations on a specific domain
-
-### List single domain [GET]
-Return information about a single domain.
-
-+ Parameters
-  + domain: `example.com` - Name of domain.
-  + fields: `id,name` (optional) - A comma separated list of specific result fields to return.
-
-+ Response 200 (application/json;charset=utf-8)
-  + Attributes (Domains)
-
-### Modify single domain [POST]
-Modify a domain and set new values
-
-You can set one or more attributes in your request.
-
-+ Parameters
-  + domain: `example.com` - Name of domain.
-
-+ Request (application/json)
-  + Attributes (Domain Modify)
-
-+ Response 200 (application/json;charset=utf-8)
-  + Attributes (Domains)
-
-+ Response 400 (application/json;charset=utf-8)
-
-### Delete single domain [DELETE]
-Delete a domain
-
-+ Parameters
-  + domain: `example.com` - Name or ID of a domain.
-
-+ Response 204 (application/json;charset=utf-8)
-
-
-
-
-
-
-
 # Data Structures
-
-## `Status` (object)
-  + status_code: `0` (number) - Status code from module
-  + status_msg: `Successfully did the thing you asked` (string) - A human readable status message
 
 ## `Subnets` (object)
   + include Status
@@ -267,6 +182,76 @@ Delete a domain
   + set_vlan: `VLAN123` (string) - Vlan name to assign, Must provide `campus` as well
 
 
+
+
+
+
+Group Domains
+=============
+
+A Domain is where ONA stores attributes about a DNS domain. Domains are typically analogus to DNS Zones and are where DNS host names are defined.  A domain must exist in ONA before any hosts can be created. Attributes related to the SOA record are defined here.
+
+# List multiple domains [GET /domains{?fields}]
+
+List all domains in ONA. Optionally provide search parameters to narrow the returned list.
+
++ Parameters
+  + fields: `id,name` (optional) - A comma separated list of specific result fields to return.
+
++ Response 200 (application/json;charset=utf-8)
+  + Attributes (Domains)
+
+# Create a new domain [POST /domains]
+
+Creates a new domain
+
+The `sys_config` table stores default values for `dns_domain`. These defaults will be used unless specific new values are provided
+
++ Request (application/json)
+  + Attributes (Domain Add)
+
++ Response 201 (application/json;charset=utf-8)
+  + Attributes (Domains)
+
+# Specific Domain [/domains/{domain}{?fields}]
+
+## List single domain [GET]
+Return information about a single domain.
+
++ Parameters
+  + domain: `example.com` - Name of domain.
+  + fields: `id,name` (optional) - A comma separated list of specific result fields to return.
+
++ Response 200 (application/json;charset=utf-8)
+  + Attributes (Domains)
+
+## Modify single domain [POST]
+Modify a domain and set new values
+
+You can set one or more attributes in your request.
+
++ Parameters
+  + domain: `example.com` - Name of domain.
+
++ Request (application/json)
+  + Attributes (Domain Modify)
+
++ Response 200 (application/json;charset=utf-8)
+  + Attributes (Domains)
+
++ Response 400 (application/json;charset=utf-8)
+
+## Delete single domain [DELETE]
+Delete a domain
+
++ Parameters
+  + domain: `example.com` - Name or ID of a domain.
+
++ Response 204 (application/json;charset=utf-8)
+
+
+# Data Structures
+
 ## `Domains` (object)
   + include Status
   + domains (array[Domain])
@@ -287,6 +272,9 @@ Delete a domain
   + retry: `2048` (number) - Domain retry time in seconds, used for SOA record
   + serial: `22233221` (number) - Domain serial number, system generated, used for SOA record
 
+## `Domain Add` (object)
+  + name: `domaintest.com` (string) - Domain name
+
 ## `Domain Modify` (object)
   + set_name: `example.com` (string) - New domain name
   + set_admin: `domains@example.com` (string) - Domain admin for SOA record
@@ -297,6 +285,235 @@ Delete a domain
   + set_minimum: `2560` (number) - Domain minimum time in seconds. Used in SOA record
   + set_ttl: `86400` (number) - Domain default TTL time in seconds. Used in SOA record
 
+
+Group Hosts
+=============
+
+A Host is basically a system that runs an OS and has `interfaces` with IP addresses on them.  It has a DNS name to identify the host itself. A host is associated with a `device` that describes the actual hardware make and model. Hosts could be both physical or virtual. A Host can also have a location record associated with it to help identify its physical location.
+
+# List all hosts [GET /hosts{?hostname,domain,mac,ip,endip,location,notes,model,role,manufacturer,tag,catype,cavalue,fields,host_id,device_id}]
+
+List all hosts in ONA. Optionally provide search parameters to narrow the returned list.
+
++ Parameters
+  + hostname: `MY-LAN` (optional) - List hosts with the host portion matching this string. Can be used with domain to form an FQDN.
+  + domain: `MY-LAN` (optional) - Match hosts in the domain. Can be used with hostname to form an FQDN.
+  + mac: `MY-LAN` (optional) - Match a specific MAC address, should be only 0-9 and A-F formated.
+  + ip: `192.168` (optional) - IP address, any single IP will match the containing subnet. Any missing IPv4 octets will be filled with a 0.
+  + endip: `192.168.255.255` (optional) - Must be used in combination with the `ip` option. Provides the end IP in a range of IP addresses to match. Any missing IPv4 octets will be filled with a 255.
+  + location: `LAX` (optional) - Match based on location. Can be short or long name for location, also postal code.
+  + notes: `Some text string` (optional) - Match based on notes field. Use % as a wildcard character.
+  + model: `3750` (optional) - Match on the device model identifier.
+  + role: `Switch` (optional) - Match on the device role.
+  + manufacturer: `Cisco` (optional) - Match on the device manufacturer.
+  + device_id: `MY-LAN` (optional) - List subnets matching the string. Use % as a wildcard character.
+  + host_id: `MY-LAN` (optional) - List subnets matching the string. Use % as a wildcard character.
+  + tag: `mytag,tag2` (optional) - One or more tags to match comma separated.
+  + catype: `nmap_scan` (optional) - Subnet with a custom attribute type matching string.
+  + cavalue: `Y` (optional) - Subnet with a custom attribute value matching string.
+  + fields: `id,name` (optional) - A comma separated list of specific result fields to return.
+
++ Response 200 (application/json;charset=utf-8)
+  + Attributes (Hosts)
+
+# Create a new host [POST /hosts]
+Creates a new host
+
++ Request (application/json)
+  + Attributes (Host Add)
+
++ Response 201 (application/json;charset=utf-8)
+  + Attributes (Hosts)
+
+# Specific Host [/host/{host}{?fields}]
+
+## List single host [GET]
+Return information about a single host.
+
+The host value can be an ID, FQDN, IP, MAC. Any of these items can be used as the lookup to identify a single host. It must be a unique value. It is recomended to use the Primary FQDN of the host.
+
++ Parameters
+  + host: `router.example.com` - Fully Qualified Domain Name (FQDN) to identify host.
+  + fields: `id,name` (optional) - A comma separated list of specific result fields to return.
+
++ Response 200 (application/json;charset=utf-8)
+  + Attributes (Hosts)
+
+## Modify single host [POST]
+Modify a host and set new values
+
+You can set one or more attributes in your request.
+
++ Parameters
+  + host: `router.example.com` - Fully Qualified Domain Name (FQDN) to identify host.
+
++ Request (application/json)
+  + Attributes (Host Modify)
+
++ Response 200 (application/json;charset=utf-8)
+  + Attributes (Hosts)
+
++ Response 400 (application/json;charset=utf-8)
+
+## Delete single host [DELETE]
+Delete a host
+
++ Parameters
+  + host: `router.example.com` - Fully Qualified Domain Name (FQDN) to identify host.
+
++ Response 204 (application/json;charset=utf-8)
+
+
+# Data Structures
+
+## `Hosts` (object)
+  + include Status
+  + hosts (array[Host])
+
+## `Host` (object)
+  + description: `Internet Link` (optional,string) - Descritption of the host.
+  + host_id: `925` (string) - ID of host the host belongs to.
+  + id: `2185` (string) - ID of the host itself.
+  + ip_addr: `336294712248048576396240581215362482189` (string) - Numeric representation of the IP address.
+  + ip_addr_text: `fd00:172:25:1::d` (string) - Textual representation of the IP address.
+  + last_response: `null` (string) - Timestamp of last ICMP responce. Updated when nmap_scan plugin is used.
+  + mac_addr: `005056A7009A` (string) - Layer 2 MAC address for host.
+  + name: `FastEthernet1/0` (string) - Host name as used by the OS.
+  + nat_host_id: `0` (string) - ID reference to the host that represents the NAT address.
+ 
+## `Host Add` (object)
+  + description: `Internet Link` (string) - Descritption of the host.
+  + host: `host.example.com` (string) - Hostname or ID new host is associated with.
+  + ip: `fd00:172:25:1::d` (string) - Textual representation of the IP address.
+  + mac: `005056A7009A` (string) - Layer 2 MAC address for host. Any typical format is supported.
+  + name: `FastEthernet1/0` (string) - Host name as used by the OS.
+  + natip: `20.20.15.75` (string) - IP of NAT address to add with this new host.
+  + addptr: `Y` (string) - Auto add a PTR record for new IP pointing to host value.
+  + force: `Y` (string) - Force duplicate MAC address. Generally Macs are globally unique, allow duplicate macs on different subnets.
+
+## `Host Modify` (object)
+  + set_description: `Internet Link` (string) - Descritption of the host.
+  + host: `host.example.com` (string) - Hostname or ID new host is associated with.
+  + host: `10.1.1.1` (string) - IP or ID of specific host to modify.
+  + set_ip: `fd00:172:25:1::d` (string) - Textual representation of the IP address.
+  + set_mac: `005056A7009A` (string) - Layer 2 MAC address for host. Any typical format is supported.
+  + set_name: `FastEthernet1/0` (string) - Host name as used by the OS.
+  + set_last_response: `2012-06-27 12:02:50` (string) - Timestamp IP was last seen.
+  + use_primary: `Y` (string) - Modify the host's primary host (only applies when "host" option is used and multiple IPs exist!).
+
+
+
+
+
+
+Group Interfaces
+=============
+
+An Interface is where IP addresses are allocated. They also contain attributes about the physical interface name and MAC address. All `hosts` must have at least one interface allocated to them. You can allocate as many more interfaces as desired to a single host. Interfaces can also be shared with one other host for the HSRP,VRRP,CARP type use case.
+
+# List all interfaces [GET /interfaces{?fields}]
+
+List all interfaces in ONA. Optionally provide search parameters to narrow the returned list.
+
++ Parameters
+  + fields: `id,name` (optional) - A comma separated list of specific result fields to return.
+
++ Response 200 (application/json;charset=utf-8)
+  + Attributes (Interfaces)
+
+# Create a new interface [POST /interfaces]
+Creates a new interface associated with an existing `host` record
+
++ Request (application/json)
+  + Attributes (Interface Add)
+
++ Response 201 (application/json;charset=utf-8)
+  + Attributes (Interfaces)
+
+# Specific Interface [/interface/{ip}{?fields}]
+
+## List single interface [GET]
+Return information about a single interface.
+
++ Parameters
+  + ip: `192.168.0.20` - IP address. IPv4 and IPv6 formats are supported.
+  + fields: `id,name` (optional) - A comma separated list of specific result fields to return.
+
++ Response 200 (application/json;charset=utf-8)
+  + Attributes (Interfaces)
+
+## Modify single interface [POST]
+Modify a interface and set new values
+
+You can set one or more attributes in your request.
+
++ Parameters
+  + ip: `192.168.0.20` - IP address. IPv4 and IPv6 formats are supported.
+
++ Request (application/json)
+  + Attributes (Interface Modify)
+
++ Response 200 (application/json;charset=utf-8)
+  + Attributes (Interfaces)
+
++ Response 400 (application/json;charset=utf-8)
+
+## Delete single interface [DELETE]
+Delete a interface
+
++ Parameters
+  + ip: `192.168.0.20` - IP address. IPv4 and IPv6 formats are supported.
+
++ Response 204 (application/json;charset=utf-8)
+
+
+# Data Structures
+
+## `Interfaces` (object)
+  + include Status
+  + interfaces (array[Interface])
+
+## `Interface` (object)
+  + description: `Internet Link` (optional,string) - Descritption of the interface.
+  + host_id: `925` (string) - ID of host the interface belongs to.
+  + id: `2185` (string) - ID of the interface itself.
+  + ip_addr: `336294712248048576396240581215362482189` (string) - Numeric representation of the IP address.
+  + ip_addr_text: `fd00:172:25:1::d` (string) - Textual representation of the IP address.
+  + last_response: `null` (string) - Timestamp of last ICMP responce. Updated when nmap_scan plugin is used.
+  + mac_addr: `005056A7009A` (string) - Layer 2 MAC address for interface.
+  + name: `FastEthernet1/0` (string) - Interface name as used by the OS.
+  + nat_interface_id: `0` (string) - ID reference to the interface that represents the NAT address.
+ 
+## `Interface Add` (object)
+  + description: `Internet Link` (string) - Descritption of the interface.
+  + host: `host.example.com` (string) - Hostname or ID new interface is associated with.
+  + ip: `fd00:172:25:1::d` (string) - Textual representation of the IP address.
+  + mac: `005056A7009A` (string) - Layer 2 MAC address for interface. Any typical format is supported.
+  + name: `FastEthernet1/0` (string) - Interface name as used by the OS.
+  + natip: `20.20.15.75` (string) - IP of NAT address to add with this new interface.
+  + addptr: `Y` (string) - Auto add a PTR record for new IP pointing to host value.
+  + force: `Y` (string) - Force duplicate MAC address. Generally Macs are globally unique, allow duplicate macs on different subnets.
+
+## `Interface Modify` (object)
+  + set_description: `Internet Link` (string) - Descritption of the interface.
+  + host: `host.example.com` (string) - Hostname or ID new interface is associated with.
+  + interface: `10.1.1.1` (string) - IP or ID of specific interface to modify.
+  + set_ip: `fd00:172:25:1::d` (string) - Textual representation of the IP address.
+  + set_mac: `005056A7009A` (string) - Layer 2 MAC address for interface. Any typical format is supported.
+  + set_name: `FastEthernet1/0` (string) - Interface name as used by the OS.
+  + set_last_response: `2012-06-27 12:02:50` (string) - Timestamp IP was last seen.
+  + use_primary: `Y` (string) - Modify the host's primary interface (only applies when "host" option is used and multiple IPs exist!).
+
+
+
+
+Data Structures
+===============
+
 ## `403error` (object)
   + status_code: `1` - Non zero error code
   + status_msg: `Token Issue: some sort of error` - Message about Token issue, should contain text describing specific issue
+
+## `Status` (object)
+  + status_code: `0` (number) - Status code from module
+  + status_msg: `Successfully did the thing you asked` (string) - A human readable status message
