@@ -40,9 +40,8 @@ function tag_add($options="") {
 
     $typetext=implode(', ',$allowed_types);
     // Return the usage summary if we need to
-    if (!($options['type'] and $options['name'] and $options['reference']) ) {
-        // NOTE: Help message lines should not exceed 80 characters for proper display on a console
-        $self['error'] = 'ERROR => Insufficient parameters';
+    if (!(isset($options['type']) and isset($options['name']) and isset($options['reference'])) ) {
+        $self['error'] = 'Insufficient parameters';
         return(array(1,
 <<<EOM
 
@@ -105,11 +104,11 @@ EOM
 
 
     // Check permissions
-#    if (! (auth('subnet_add') or auth('host_add')) ) {
-#        $self['error'] = "Permission denied!";
-#        printmsg($self['error'], 0);
-#        return(array(10, $self['error']));
-#    }
+    if (! (auth('subnet_add') or auth('host_add')) ) {
+        $self['error'] = "Permission denied!";
+        printmsg($self['error'], 'error');
+        return(array(10, $self['error']));
+    }
 
     // Get the next ID for the new tag
     $id = ona_get_next_id('tags');
@@ -118,7 +117,7 @@ EOM
         printmsg($self['error'], 'warning');
         return(array(5, $self['error']));
     }
-    printmsg("DEBUG => ID for new tag: $id", 3);
+    printmsg("ID for new tag: $id", 'debug');
 
     // Add the tag
     list($status, $rows) =
@@ -185,7 +184,7 @@ function tag_del($options="") {
     printmsg('Called with options: ('.implode (";",$options).')', 'info');
 
     // Return the usage summary if we need to
-    if ((!isset($options['tag'])) and !($options['type'] and $options['name'] and $options['reference']) ) {
+    if ((!isset($options['tag'])) and !(isset($options['type']) and isset($options['name']) and isset($options['reference'])) ) {
         $self['error'] = 'Insufficient parameters';
         return(array(1, $self['error']));
     }
@@ -205,12 +204,12 @@ function tag_del($options="") {
 
 
 
-#        // Check permissions
-#        if (! (auth('host_del') or auth('subnet_del')) ) {
-#            $self['error'] = "Permission denied!";
-#            printmsg($self['error'], 'warning');
-#            return(array(10, $self['error']));
-#        }
+    // Check permissions
+    if (! (auth('host_del') or auth('subnet_del')) ) {
+        $self['error'] = "Permission denied!";
+        printmsg($self['error'], 'warning');
+        return(array(10, $self['error']));
+    }
 
     list($status, $rows) = db_delete_records($onadb, 'tags', array('id' => $tag['id']));
     if ($status or !$rows) {
@@ -223,20 +222,5 @@ function tag_del($options="") {
     $self['error'] = "TAG DELETED: {$tag['name']} from {$tag['type']}[{$tag['reference']}]";
     printmsg($self['error'], 'notice');
     return(array(0, $self['error']));
-
-
-    // Otherwise display the record that would have been deleted
-    $text = <<<EOL
-Record(s) NOT DELETED (see "commit" option)
-Displaying record(s) that would have been deleted:
-
-    NAME:      {$tag['name']}
-    TYPE:      {$tag['type']}
-    REFERENCE: {$tag['reference']}
-
-
-EOL;
-
-    return(array(6, $text));
 
 }
