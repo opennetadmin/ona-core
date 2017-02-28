@@ -14,10 +14,10 @@ class interfaces {
      // Process various method types
      switch ($request->getMethod()) {
        case 'GET':
-         $output = process_output(interfaces($args + (array)$request->getQueryParams()));
+         $output = process_output(run_module('interfaces', $args + (array)$request->getQueryParams()));
          break;
        case 'POST':
-         $output = process_output(interface_add($args + (array)$request->getParsedBody()));
+         $output = process_output(run_module('interface_add', $args + (array)$request->getParsedBody()));
          $response = $response->withStatus(201);
          break;
      }
@@ -31,19 +31,19 @@ class interfaces {
    }
 
 
-
+//TODO: check if the path is under host.. then force only using that instead of -d host= option.
    public function Specific($request, $response, $args) {
 
      // Process various method types
      switch ($request->getMethod()) {
        case 'GET':
-         $output = process_output(interface_display($args+ (array)$request->getQueryParams()));
+         $output = process_output(run_module('interface_display', $args + (array)$request->getQueryParams()));
          break;
        case 'DELETE':
-         $output = process_output(interface_del($args));
+         $output = process_output(run_module('interface_del', $args));
          break;
        case 'POST':
-         $output = process_output(interface_modify($args + (array)$request->getParsedBody()));
+         $output = process_output(run_module('interface_modify', $args + (array)$request->getParsedBody()));
          break;
      }
 

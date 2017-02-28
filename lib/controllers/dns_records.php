@@ -14,10 +14,10 @@ class dns_records {
      // Process various method types
      switch ($request->getMethod()) {
        case 'GET':
-         $output = process_output(dns_records($args + (array)$request->getQueryParams()));
+         $output = process_output(run_module('dns_records', $args + (array)$request->getQueryParams()));
          break;
        case 'POST':
-         $output = process_output(dns_record_add($request->getParsedBody()));
+         $output = process_output(run_module('dns_record_add', $request->getParsedBody()));
          $response = $response->withStatus(201);
          break;
      }
@@ -37,14 +37,14 @@ class dns_records {
      // Process various method types
      switch ($request->getMethod()) {
        case 'GET':
-         $output = process_output(dns_record_display($args+ (array)$request->getQueryParams()));
+         $output = process_output(run_module('dns_record_display', $args + (array)$request->getQueryParams()));
          break;
        case 'DELETE':
-         $output = process_output(dns_record_del($args));
+         $output = process_output(run_module('dns_record_del', $args));
          $response = $response->withStatus(204);
          break;
        case 'POST':
-         $output = process_output(dns_record_modify($args + (array)$request->getParsedBody()));
+         $output = process_output(run_module('dns_record_modify', $args + (array)$request->getParsedBody()));
          break;
      }
 

@@ -14,10 +14,10 @@ class Subnets {
      // Process various method types
      switch ($request->getMethod()) {
        case 'GET':
-         $output = process_output(subnets($args + (array)$request->getQueryParams()));
+         $output = process_output(run_module('subnets', $args + (array)$request->getQueryParams()));
          break;
        case 'POST':
-         $output = process_output(subnet_add($request->getParsedBody()));
+         $output = process_output(run_module('subnet_add', $request->getParsedBody()));
          $response = $response->withStatus(201);
          break;
      }
@@ -37,13 +37,13 @@ class Subnets {
      // Process various method types
      switch ($request->getMethod()) {
        case 'GET':
-         $output = process_output(subnet_display($args+ (array)$request->getQueryParams()));
+         $output = process_output(run_module('subnet_display', $args+ (array)$request->getQueryParams()));
          break;
        case 'DELETE':
-         $output = process_output(subnet_del($args));
+         $output = process_output(run_module('subnet_del', $args));
          break;
        case 'POST':
-         $output = process_output(subnet_modify($args + (array)$request->getParsedBody()));
+         $output = process_output(run_module('subnet_modify', $args + (array)$request->getParsedBody()));
          break;
      }
 
@@ -58,7 +58,7 @@ class Subnets {
 
    public function nextip($request, $response, $args) {
 
-     $output = process_output(subnet_nextip($args+ (array)$request->getQueryParams()));
+     $output = process_output(run_module('subnet_nextip', $args+ (array)$request->getQueryParams()));
 
      // update status code on errors
      if ($output['status_code'] > 0) {
@@ -78,14 +78,11 @@ class Subnets {
 
      // Process various method types
      switch ($request->getMethod()) {
-       case 'GET':
-         //$output = process_output(subnet_display($args));
-         break;
        case 'DELETE':
-         $output = process_output(tag_del($args + (array)$request->getParsedBody()));
+         $output = process_output(run_module('tag_del', $args + (array)$request->getParsedBody()));
          break;
        case 'POST':
-         $output = process_output(tag_add($args + (array)$request->getParsedBody()));
+         $output = process_output(run_module('tag_add', $args + (array)$request->getParsedBody()));
          $response = $response->withStatus(201);
          break;
      }
@@ -110,13 +107,13 @@ class Subnets {
      // Process various method types
      switch ($request->getMethod()) {
        case 'GET':
-         $output = process_output(custom_attribute_display($args + (array)$request->getParsedBody()));
+         $output = process_output(run_module('custom_attribute_display', $args + (array)$request->getParsedBody()));
          break;
        case 'DELETE':
-         $output = process_output(custom_attribute_del($args + (array)$request->getParsedBody()));
+         $output = process_output(run_module('custom_attribute_del', $args + (array)$request->getParsedBody()));
          break;
        case 'POST':
-         $output = process_output(custom_attribute_add($args + (array)$request->getParsedBody()));
+         $output = process_output(run_module('custom_attribute_add', $args + (array)$request->getParsedBody()));
          $response = $response->withStatus(201);
          break;
      }

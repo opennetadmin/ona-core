@@ -14,10 +14,10 @@ class domains {
      // Process various method types
      switch ($request->getMethod()) {
        case 'GET':
-         $output = process_output(domains($args + (array)$request->getQueryParams()));
+         $output = process_output(run_module('domains', $args + (array)$request->getQueryParams()));
          break;
        case 'POST':
-         $output = process_output(domain_add($request->getParsedBody()));
+         $output = process_output(run_module('domain_add', $request->getParsedBody()));
          $response = $response->withStatus(201);
          break;
      }
@@ -37,14 +37,14 @@ class domains {
      // Process various method types
      switch ($request->getMethod()) {
        case 'GET':
-         $output = process_output(domain_display($args+ (array)$request->getQueryParams()));
+         $output = process_output(run_module('domain_display', $args + (array)$request->getQueryParams()));
          break;
        case 'DELETE':
-         $output = process_output(domain_del($args));
+         $output = process_output(run_module('domain_del', $args));
          $response = $response->withStatus(204);
          break;
        case 'POST':
-         $output = process_output(domain_modify($args + (array)$request->getParsedBody()));
+         $output = process_output(run_module('domain_modify', $args + (array)$request->getParsedBody()));
          break;
      }
 
