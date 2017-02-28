@@ -289,17 +289,28 @@ primary name for a host should be unique in all cases I'm aware of
 
 */
 
-    // Sanitize addptr.. set it to Y if it is not set
-    if (isset($options['addptr']))
+    // Sanitize addptr.. default it to Y if it is not set
+    if (isset($options['addptr'])) {
       $options['addptr'] = sanitize_YN($options['addptr'], 'Y');
+    } else {
+      $options['addptr'] = 'Y';
+    }
 
     // clean up what is passed in
     if (isset($options['ip']))
       $options['ip'] = trim($options['ip']);
     if (isset($options['pointsto']))
       $options['pointsto'] = trim($options['pointsto']);
-    if (isset($options['name']))
+
+    if (isset($options['name'])) {
       $options['name'] = trim($options['name']);
+      // If the name we were passed has a leading or trailing . in it then remove the dot.
+      $options['name'] = preg_replace("/^\./", '', $options['name']);
+      $options['name'] = preg_replace("/\.$/", '', $options['name']);
+    } else {
+      $options['name'] = '';
+    }
+
     if (isset($options['domain']))
       $options['domain'] = trim($options['domain']);
     if (isset($options['txt']))
@@ -327,9 +338,6 @@ primary name for a host should be unique in all cases I'm aware of
     // force AAAA to A to keep it consistant.. we'll display it properly as needed
     if ($options['type'] == 'AAAA')  $options['type'] = 'A';
 
-    // If the name we were passed has a leading or trailing . in it then remove the dot.
-    $options['name'] = preg_replace("/^\./", '', $options['name']);
-    $options['name'] = preg_replace("/\.$/", '', $options['name']);
 
     // Determine the real hostname and domain name to be used --
     // i.e. add .something.com, or find the part of the name provided
@@ -385,7 +393,7 @@ primary name for a host should be unique in all cases I'm aware of
 
     // Gather DNS view information
     $add_pointsto_viewid = $add_viewid = 0;
-    if (isset($options['view'])) {
+    if (isset($options['view']) and $options['view'] != '') {
         if (is_numeric($options['view'])) {
             $viewsearch = array('id' => $options['view']);
         } else {
@@ -403,7 +411,7 @@ primary name for a host should be unique in all cases I'm aware of
     }
 
     // lets test out if it has a / in it to strip the view name portion
-    if (strstr($options['pointsto'],'/')) {
+    if (isset($options['pointsto']) and strstr($options['pointsto'],'/')) {
         list($dnsview,$options['pointsto']) = explode('/', $options['pointsto']);
         list($status, $rows, $view) = db_get_record($onadb, 'dns_views', array('name' => strtoupper($dnsview)));
         if($rows) $add_pointsto_viewid = $view['id'];
@@ -500,8 +508,7 @@ but you still want to reverse lookup all the other interfaces to know they are o
 
         list($status, $rows, $arecord) = ona_get_dns_record(array('name' => $hostname, 'domain_id' => $domain['id'],'interface_id' => $interface['id'], 'type' => 'A','dns_view_id' => $add_viewid));
         if ($status or !$rows) {
-            $self['error'] = "Unable to find DNS A record to point PTR entry to! Check that the IP you chose is associated with the name you chose.{$viewmsg}";
-            printmsg($self['error'], 'error');
+            printmsg("Unable to find DNS A record to point PTR entry to! Check that the IP you chose is associated with the name you chose.{$viewmsg}", 'info');
 
             // As a last resort just find a matching A record no matter the IP.  
             // This is for PTRs that point to an A record that uses a different IP (loopback example)
@@ -949,11 +956,15 @@ complex DNS messes for themselves.
     printmsg("ID for new dns record: $id", 'debug');
 
     // If a ttl was passed use it, otherwise use what was in the domain minimum
-    if ($options['ttl']) { $add_ttl = $options['ttl']; } else { $add_ttl = 0; }
+    if (isset($options['ttl'])) { $add_ttl = $options['ttl']; } else { $add_ttl = 0; }
 
     // There is an issue with escaping '=' and '&'.  We need to avoid adding escape characters
-    $options['notes'] = str_replace('\\=','=',$options['notes']);
-    $options['notes'] = str_replace('\\&','&',$options['notes']);
+    if (isset($options['notes'])) {
+      $options['notes'] = str_replace('\\=','=',$options['notes']);
+      $options['notes'] = str_replace('\\&','&',$options['notes']);
+    } else {
+      $options['notes'] = '';
+    }
 
     // Add the dns record
     list($status, $rows) = db_insert_record(
@@ -984,13 +995,14 @@ complex DNS messes for themselves.
     }
 
     // If it is an A record and they have specified to auto add the PTR record for it.
-    if ($options['addptr'] == 'Y' and $options['type'] == 'A') {
+    if (isset($options['addptr']) and $options['addptr'] == 'Y' and $options['type'] == 'A') {
         printmsg("Auto adding a PTR record for {$options['name']}.", 'notice');
         // Run dns_record_add as a PTR type
-        list($status, $output) = run_module('dns_record_add', array('dns_record' => $options['name'],'domain' => $domain['fqdn'],'ip' => $options['ip'],'ebegin' => $options['ebegin'],'type' => 'PTR','view' => $add_viewid));
+        list($status, $output) = run_module('dns_record_add', array('name' => $options['name'],'domain' => $domain['fqdn'],'ip' => $options['ip'],'ebegin' => $options['ebegin'],'type' => 'PTR','view' => $add_viewid));
         if ($status) {
+            $self['error'] = "Unable to auto add PTR record for this A record";
+            printmsg($self['error'],'error');
             return(array($status, $output));
-            #printmsg($output,3);
         }
     }
 
@@ -1113,8 +1125,11 @@ EOM
 
 
     // Sanitize addptr.. set it to Y if it is not set
-    if (isset($options['set_addptr']))
+    if (isset($options['set_addptr'])) {
       $options['set_addptr'] = sanitize_YN($options['set_addptr'], 'Y');
+    } else {
+      $options['set_addptr'] = 'Y';
+    }
 
     // clean up what is passed in
     if (isset($options['set_ip']))
@@ -1619,7 +1634,7 @@ function dns_record_del($options="") {
     $version = '2.00';
 
     // Return the usage summary if we need to
-    if (!isset($options['dns_record'])) {
+    if (!isset($options['dns_record']) and !isset($options['name'])) {
         $self['error'] = 'Insufficient parameters';
         return(array(1,
 <<<EOM
@@ -1657,6 +1672,9 @@ need to do a better delete of DNS records when deleting a host.. currently its a
 MP: TODO:  this delete will not handle DNS views unless you use the ID of the record to delete.  add a view option at some point.
 
 */
+    // Support old name input
+    if (isset($options['name']))
+      $options['dns_record'] = $options['name'];
 
     // If the name we were passed has a leading . in it then remove the dot.
     $options['dns_record'] = preg_replace("/^\./", '', $options['dns_record']);
@@ -1760,7 +1778,7 @@ MP: TODO:  this delete will not handle DNS views unless you use the ID of the re
             $arpa = '.in-addr.arpa';
             $octcount = 3;
         }
-        $dns['fqdn'] = "{$ipflip}{$arpa} -> {$pointsto['fqdn']}";
+        $dns['fqdn'] = "{$ipflip}{$arpa} from {$pointsto['fqdn']}";
     }
 
     // Return the success notice
@@ -1807,8 +1825,11 @@ function dns_record_display($options="") {
     $text_array['module_version'] = $version;
 
     // Sanitize options[verbose] (default is yes)
-    if (isset($options['verbose']))
+    if (isset($options['verbose'])) {
       $options['verbose'] = sanitize_YN($options['verbose'], 'Y');
+    } else {
+      $options['verbose'] = 'Y';
+    }
 
     // Return the usage summary if we need to
     if (!isset($options['dns_record']) ) {

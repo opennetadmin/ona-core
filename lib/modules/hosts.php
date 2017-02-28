@@ -29,13 +29,6 @@ function hosts($options="") {
     if (isset($options['nowildcard'])) $wildcard = '';
 
 
-    // DISPLAY ALL
-    // MP: I dont think this is used.. remove it if you can
-    if (isset($options['all_flag'])) {
-        $where .= $and . "h.id > 0";
-        $and = " AND ";
-    }
-
     // HOST ID
     if (isset($options['host_id'])) {
         $where .= $and . "h.id = " . $onadb->qstr($options['host_id']);
@@ -216,9 +209,9 @@ and d.domain_id = ". $onadb->qstr($domain['id']). "
     // IP ADDRESS
     $ip = $ip_end = '';
     if (isset($options['ip'])) {
-        // Build $ip and $ip_end from $options['ip'] and $options['ip_thru']
+        // Build $ip and $ip_end from $options['ip'] and $options['endip']
         $ip = ip_complete($options['ip'], '0');
-        if (isset($options['ip_thru'])) { $ip_end = ip_complete($options['ip_thru'], '255'); }
+        if (isset($options['endip'])) { $ip_end = ip_complete($options['endip'], '255'); }
         else { $ip_end = ip_complete($options['ip'], '255'); }
 
         // Find out if $ip and $ip_end are valid
@@ -437,17 +430,11 @@ function host_add($options="") {
     global $conf, $self, $onadb;
 
     // Version - UPDATE on every edit!
-    $version = '1.12';
-
-    printmsg("DEBUG => host_add({$options}) called", 3);
-
-    // Parse incoming options string to an array
-    $options = parse_options($options);
+    $version = '2.00';
 
     // Return the usage summary if we need to
-    if ($options['help'] or !($options['host'] and $options['type'] and $options['ip']) ) {
-        // NOTE: Help message lines should not exceed 80 characters for proper display on a console
-        $self['error'] = 'ERROR => Insufficient parameters';
+    if (!(isset($options['host']) and isset($options['type']) and isset($options['ip'])) ) {
+        $self['error'] = 'Insufficient parameters';
         return(array(1,
 <<<EOM
 
@@ -477,33 +464,39 @@ EOM
         ));
     }
 
-    // Sanitize addptr.. set it to Y if it is not set
-    $options['addptr'] = sanitize_YN($options['addptr'], 'Y');
+    // Sanitize addptr.. default it to Y if it is not set by the user
+    if (isset($options['addptr'])) {
+      $options['addptr'] = sanitize_YN($options['addptr'], 'Y');
+    } else {
+      $options['addptr'] = 'Y';
+    }
 
     // clean up what is passed in
-    $options['ip'] = trim($options['ip']);
-    $options['mac'] = trim($options['mac']);
-    $options['name'] = trim($options['name']);
-    $options['host'] = trim($options['host']);
+    if (isset($options['ip']))
+      $options['ip'] = trim($options['ip']);
+    if (isset($options['mac']))
+      $options['mac'] = trim($options['mac']);
+    if (isset($options['name']))
+      $options['name'] = trim($options['name']);
+    if (isset($options['host']))
+      $options['host'] = trim($options['host']);
 
     // Validate that there isn't already another interface with the same IP address
     list($status, $rows, $interface) = ona_get_interface_record(array('ip_addr' => $options['ip']));
     if ($rows) {
-        printmsg("DEBUG => host_add() IP conflict: That IP address (" . ip_mangle($orig_ip,'dotted') . ") is already in use!",3);
-        $self['error'] = "ERROR => host_add() IP conflict: That IP address (" . ip_mangle($orig_ip,'dotted') . ") is already in use!";
-        return(array(4, $self['error'] . "\n" .
-                        "INFO => Conflicting interface record ID: {$interface['id']}\n"));
+        $self['error'] = "IP conflict: That IP address (" . ip_mangle($orig_ip,'dotted') . ") is already in use!";
+        printmsg($self['error'],'error');
+        return(array(4, $self['error']));
     }
 
     // Find the Location ID to use
-    if ($options['location']) {
+    if (isset($options['location'])) {
         list($status, $rows, $loc) = ona_find_location($options['location']);
         if ($status or !$rows) {
-            printmsg("DEBUG => The location specified, {$options['location']}, does not exist!", 3);
-            $self['error'] = "ERROR => The location specified, {$options['location']}, does not exist!";
-            return(array(2, "{$self['error']}\n"));
+            $self['error'] = "The location specified, {$options['location']}, does not exist!";
+            printmsg($self['error'],'error');
+            return(array(2, $self['error']));
         }
-        printmsg("DEBUG => Location selected: {$loc['reference']}, location name: {$loc['name']}", 3);
     } else {
         $loc['id'] = 0;
     }
@@ -511,18 +504,22 @@ EOM
     // Find the Device Type ID (i.e. Type) to use
     list($status, $rows, $device_type) = ona_find_device_type($options['type']);
     if ($status or $rows != 1 or !$device_type['id']) {
-        printmsg("DEBUG => The device type specified, {$options['type']}, does not exist!", 3);
-        return(array(3, "ERROR => The device type specified, {$options['type']}, does not exist!\n"));
+        $self['error'] = "The device type specified, {$options['type']}, does not exist!";
+        printmsg($self['error'],'error');
+        return(array(3, $self['error']));
     }
-    printmsg("DEBUG => Device type selected: {$device_type['model_description']} Device ID: {$device_type['id']}", 3);
+    printmsg("Device type selected: {$device_type['model_description']} Device ID: {$device_type['id']}", 'info');
 
 
+/*
     // Sanitize "security_level" option
-    $options['security_level'] = sanitize_security_level($options['security_level']);
+    if (isset($options['security_level']))
+      $options['security_level'] = sanitize_security_level($options['security_level']);
     if ($options['security_level'] == -1) {
         printmsg("DEBUG => Sanitize security level failed either ({$options['security_level']}) is invalid or is higher than user's level!", 3);
         return(array(3, $self['error'] . "\n"));
     }
+*/
 
 
     // Determine the real hostname to be used --
@@ -533,19 +530,19 @@ EOM
     // Find the domain name piece of $search.
     // If we are specifically passing in a domain, use its value.  If we dont have a domain
     // then try to find it in the name that we are setting.
-    if($options['domain']) {
+    if(isset($options['domain'])) {
         // Find the domain name piece of $search
         list($status, $rows, $domain) = ona_find_domain($options['domain'],0);
     } else {
         list($status, $rows, $domain) = ona_find_domain($options['host'],0);
     }
     if (!isset($domain['id'])) {
-        printmsg("ERROR => Unable to determine domain name portion of ({$options['host']})!", 3);
-        $self['error'] = "ERROR => Unable to determine domain name portion of ({$options['host']})!";
-        return(array(3, $self['error'] . "\n"));
+        $self['error'] = "Unable to determine domain name portion of ({$options['host']})!";
+        printmsg($self['error'],'error');
+        return(array(3, $self['error']));
     }
 
-    printmsg("DEBUG => ona_find_domain({$options['host']}) returned: {$domain['fqdn']}", 3);
+    printmsg("ona_find_domain({$options['host']}) returned: {$domain['fqdn']}", 'debug');
 
     // Now find what the host part of $search is
     $hostname = str_replace(".{$domain['fqdn']}", '', $options['host']);
@@ -553,68 +550,73 @@ EOM
     // Validate that the DNS name has only valid characters in it
     $hostname = sanitize_hostname($hostname);
     if (!$hostname) {
-        printmsg("ERROR => Invalid host name ({$options['host']})!", 3);
-        $self['error'] = "ERROR => Invalid host name ({$options['host']})!";
-        return(array(4, $self['error'] . "\n"));
+        $self['error'] = "Invalid host name ({$options['host']})!";
+        printmsg($self['error'],'error');
+        return(array(4, $self['error']));
     }
 
 
     // Debugging
-    printmsg("DEBUG => Using hostname: {$hostname} Domainname: {$domain['fqdn']}, Domain ID: {$domain['id']}", 3);
+    printmsg("Using hostname: {$hostname} Domainname: {$domain['fqdn']}, Domain ID: {$domain['id']}", 'debug');
 
     // Validate that there isn't already any dns record named $host['name'] in the domain $host_domain_id.
     $h_status = $h_rows = 0;
     // does the domain $host_domain_id even exist?
     list($d_status, $d_rows, $d_record) = ona_get_dns_record(array('name' => $hostname, 'domain_id' => $domain['id']));
     if ($d_status or $d_rows) {
-        printmsg("DEBUG => The name {$hostname}.{$domain['fqdn']} is already in use, the primary name for a host should be unique!",3);
-        $self['error'] = "ERROR => Another DNS record named {$hostname}.{$domain['fqdn']} is already in use, the primary name for a host should be unique!";
-        return(array(5, $self['error'] . "\n"));
+        $self['error'] = "Another DNS record named {$hostname}.{$domain['fqdn']} is already in use, the primary name for a host must be unique!";
+        printmsg($self['error'],'error');
+        return(array(5, $self['error']));
     }
 
     // Check permissions
     if (!auth('host_add')) {
         $self['error'] = "Permission denied!";
-        printmsg($self['error'], 0);
-        return(array(10, $self['error'] . "\n"));
+        printmsg($self['error'], 'error');
+        return(array(10, $self['error']));
     }
 
     // Get the next ID for the new host record
     $id = ona_get_next_id('hosts');
     if (!$id) {
-        $self['error'] = "ERROR => The ona_get_next_id('hosts') call failed!";
-        printmsg($self['error'], 0);
-        return(array(7, $self['error'] . "\n"));
+        $self['error'] = "The ona_get_next_id('hosts') call failed!";
+        printmsg($self['error'], 'error');
+        return(array(7, $self['error']));
     }
-    printmsg("DEBUG => ID for new host record: $id", 3);
+    printmsg("ID for new host record: $id", 'debug');
 
     // Get the next ID for the new device record or use the one passed in the CLI
-    if (!$options['device']) {
+    if (!isset($options['device'])) {
         $host['device_id'] = ona_get_next_id('devices');
         if (!$id) {
-            $self['error'] = "ERROR => The ona_get_next_id('device') call failed!";
-            printmsg($self['error'], 0);
-            return(array(7, $self['error'] . "\n"));
+            $self['error'] = "The ona_get_next_id('device') call failed!";
+            printmsg($self['error'], 'error');
+            return(array(7, $self['error']));
         }
-        printmsg("DEBUG => ID for new device record: $id", 3);
+        printmsg("ID for new device record: $id", 'debug');
     } else {
         list($status, $rows, $devid) = ona_find_device($options['device']);
         if (!$rows) {
-            printmsg("DEBUG => The device specified, {$options['device']}, does not exist!",3);
-            $self['error'] = "ERROR => The device specified, {$options['device']}, does not exist!";
-            return(array(7, $self['error'] . "\n"));
+            $self['error'] = "The device specified, {$options['device']}, does not exist!";
+            printmsg($self['error'], 'error');
+            return(array(7, $self['error']));
         }
         $host['device_id'] = $devid['id'];
     }
 
 
     // There is an issue with escaping '=' and '&'.  We need to avoid adding escape characters
-    $options['notes'] = str_replace('\\=','=',$options['notes']);
-    $options['notes'] = str_replace('\\&','&',$options['notes']);
+    if (isset($options['notes'])) {
+      $options['notes'] = str_replace('\\=','=',$options['notes']);
+      $options['notes'] = str_replace('\\&','&',$options['notes']);
+    } else {
+      $options['notes'] = '';
+    }
 
     // Add the device record
     // FIXME: (MP) quick add of device record. more detail should be looked at here to ensure it is done right
-// FIXME: MP this should use the run_module('device_add')!!! when it is ready
+    // FIXME: MP this should use the run_module('device_add')!!! when it is ready
+    //        create a device module
     list($status, $rows) = db_insert_record(
         $onadb,
         'devices',
@@ -623,13 +625,12 @@ EOM
             'device_type_id'    => $device_type['id'],
             'location_id'       => $loc['id'],
             'primary_host_id'   => $id
-            // FIXME: (MP) add in the asset tag and serial number stuff too
         )
     );
     if ($status or !$rows) {
-        $self['error'] = "ERROR => host_add() SQL Query failed adding device: " . $self['error'];
-        printmsg($self['error'], 0);
-        return(array(6, $self['error'] . "\n"));
+        $self['error'] = "SQL Query failed adding device: " . $self['error'];
+        printmsg($self['error'], 'error');
+        return(array(6, $self['error']));
     }
 
     // Add the host record
@@ -646,61 +647,65 @@ EOM
         )
     );
     if ($status or !$rows) {
-        $self['error'] = "ERROR => host_add() SQL Query failed adding host: " . $self['error'];
-        printmsg($self['error'], 0);
-        return(array(6, $self['error'] . "\n"));
+        $self['error'] = "SQL Query failed adding host: " . $self['error'];
+        printmsg($self['error'], 'error');
+        return(array(6, $self['error']));
     }
 
-    // Else start an output message
-    $text = "INFO => Host ADDED: {$hostname}.{$domain['fqdn']}";
-    printmsg($text,0);
-    $text .= "\n";
 
-
+    // ---- Add the interface -----
     // We must always have an IP now to add an interface, call that module now:
     // since we have no name yet, we need to use the ID of the new host as the host option for the following module calls
     $options['host'] = $id;
-    // for annoying reasons we need to keep track of what was set first
-    $options['addptrsave'] = $options['addptr'];
-    // Interface adds can add PTR records, lets let the A record add that happens next add it instead.
-    $options['addptr'] = '0';
+    // Since interface adds can add PTR records as well, lets temporarily set that to NO and let the DNS add in the next step do it for us.
+    $ipoptions = $options;
+    $ipoptions['addptr'] = 'N';
+    unset($ipoptions['notes']);
+    unset($ipoptions['type']);
 
-    printmsg("DEBUG => host_add() ({$hostname}.{$domain['fqdn']}) calling interface_add() ({$options['ip']})", 3);
-    list($status, $output) = run_module('interface_add', $options);
+    printmsg("({$hostname}.{$domain['fqdn']}) calling interface_add() ({$ipoptions['ip']})", 'debug');
+    list($status, $output) = run_module('interface_add', $ipoptions);
     if ($status)
         return(array($status, $output));
-    $text .= $output;
+    // Get new interface info from output
+    $int = $output['interfaces'][0];
 
-    // Find the interface_id for the interface we just added
-    list($status, $rows, $int) = ona_find_interface($options['ip']);
-
+    // ----- Add the DNS record -----
     // make the dns record type A
     $options['type'] = 'A';
-    // FIXME: MP I had to force the name value here.  name is comming in as the interface name.  this is nasty!
+    // The user input called 'name' is for the interface name. We have to manually build the name input for the dns add
+    // Non optimal but the only way to do it since there is an overloading of the name use case.
     $options['name'] = "{$hostname}.{$domain['fqdn']}";
     $options['domain'] = $domain['fqdn'];
-    // And we will go ahead and auto add the ptr.  the user can remove it later if they dont want it.  FIXME: maybe create a checkbox on the host edit
-    $options['addptr'] = $options['addptrsave'];
 
     // Add the DNS entry with the IP address etc
-    printmsg("DEBUG => host_add() ({$hostname}.{$domain['fqdn']}) calling dns_record_add() ({$options['ip']})", 3);
+    printmsg("({$hostname}.{$domain['fqdn']}) calling dns_record_add() ({$options['ip']})", 'debug');
     list($status, $output) = run_module('dns_record_add', $options);
     if ($status)
         return(array($status, $output));
-    $text .= $output;
 
-    // find the dns record we just added so we can use its ID as the primary_dns_id for the host.
-    list($status, $rows, $dnsrecord) = ona_get_dns_record(array('name' => $hostname, 'domain_id' => $domain['id'], 'interface_id' => $int['id'], 'type' => 'A'));
+    // Get new dns record info from output
+    $dnsrecord = $output['dns_records'][0];
 
     // Set the primary_dns_id to the dns record that was just added
     list($status, $rows) = db_update_record($onadb, 'hosts', array('id' => $id), array('primary_dns_id' => $dnsrecord['id']));
     if ($status or !$rows) {
-        $self['error'] = "ERROR => host_add() SQL Query failed to update primary_dns_id for host: " . $self['error'];
-        printmsg($self['error'], 0);
-        return(array(8, $self['error'] . "\n"));
+        $self['error'] = "SQL Query failed to update primary_dns_id for host: " . $self['error'];
+        printmsg($self['error'], 'error');
+        return(array(8, $self['error']));
     }
 
-    return(array(0, $text));
+    // Return the success notice
+    $result['status_msg'] = 'Host added.';
+    $result['module_version'] = $version;
+    list($status, $rows, $result['hosts'][0]) = ona_get_host_record(array('id' => $id));
+    #$result['subnets'][0]['ip_mask_cidr'] = ip_mangle($result['subnets'][0]['ip_mask'], 'cidr');
+
+    ksort($result['hosts'][0]);
+
+    printmsg("Host added: {$result['hosts'][0]['fqdn']}", 'notice');
+
+    return(array(0, $result));
 
 }
 
@@ -952,397 +957,260 @@ EOM
 ///////////////////////////////////////////////////////////////////////
 function host_del($options="") {
     global $conf, $self, $onadb;
-    printmsg("DEBUG => host_del({$options}) called", 3);
 
     // Version - UPDATE on every edit!
-    $version = '1.19';
-
-    // Parse incoming options string to an array
-    $options = parse_options($options);
-
-    // Sanitize options[commit] (default is no)
-    $options['commit'] = sanitize_YN($options['commit'], 'N');
+    $version = '2.00';
 
     // Return the usage summary if we need to
-    if ($options['help'] or !$options['host']) {
-        // NOTE: Help message lines should not exceed 80 characters for proper display on a console
-        $self['error'] = 'ERROR => Insufficient parameters';
-        return(array(1,
-<<<EOM
-
-host_del-v{$version}
-Deletes a host, and all related records from the database
-
-  Synopsis: host_del [KEY=VALUE] ...
-
-  Required:
-    host=NAME[.DOMAIN] or ID      Hostname or ID of the host to delete
-
-  Optional:
-    commit=[yes|no]               Commit db transaction (no)
-
-  Notes:
-    * A host won't be deleted if it has config text records
-    * A host won't be deleted if it's configured as a dns or dhcp server
-
-
-EOM
-        ));
+    if (!isset($options['host'])) {
+        $self['error'] = 'Insufficient parameters';
+        return(array(1,$self['error']));
     }
 
 
     // Find the host (and domain) record from $options['host']
     list($status, $rows, $host) = ona_find_host($options['host']);
-    printmsg("DEBUG => host_del() Host: {$host['fqdn']} ({$host['id']})", 3);
-    if (!$host['id']) {
-        printmsg("DEBUG => Unknown host: {$host['fqdn']}",3);
-        $self['error'] = "ERROR => Unknown host: {$host['fqdn']}";
-        return(array(2, $self['error'] . "\n"));
+    if (!$rows) {
+        $self['error'] = "Unable to find host: {$options['host']}";
+        printmsg($self['error'], 'error');
+        return(array(2, $self['error']));
+    } else {
+      printmsg("Host: {$host['fqdn']} ({$host['id']})", 'debug');
     }
 
 
     // Check permissions
-    if (!auth('host_del') or !authlvl($host['LVL'])) {
+    if (!auth('host_del')) {
         $self['error'] = "Permission denied!";
-        printmsg($self['error'], 0);
-        return(array(10, $self['error'] . "\n"));
+        printmsg($self['error'], 'error');
+        return(array(10, $self['error']));
     }
 
-    // If "commit" is yes, delete the host
-    if ($options['commit'] == 'Y') {
-        $text = "";
-        $add_to_error = "";
-        $add_to_status = 0;
-
-        // SUMMARY:
-        //   Don't allow a delete if it is performing server duties
-        //   Don't allow a delete if config text entries exist
-        //   Delete Interfaces
-        //   Delete interface cluster entries
-        //   Delete dns records
-        //   Delete custom attributes
-        //   Delete DHCP entries
-        //   Delete device record if it is the last host associated with it.
-        //
-        // IDEA: If it's the last host in a domain (maybe do the same for or a networks & vlans in the interface delete)
-        //       It could just print a notice or something.
-
-        // Check that it is the host is not performing server duties
-        // FIXME: MP mostly fixed..needs testing
-        $serverrow = 0;
-        // check ALL the places server_id is used and remove the entry from server_b if it is not used
-        list($status, $rows, $srecord) = db_get_record($onadb, 'dhcp_server_subnets', array('host_id' => $host['id']));
-        if ($rows) $serverrow++;
-        list($status, $rows, $srecord) = db_get_record($onadb, 'dhcp_failover_groups', array('primary_server_id' => $host['id']));
-        if ($rows) $serverrow++;
-        list($status, $rows, $srecord) = db_get_record($onadb, 'dhcp_failover_groups', array('secondary_server_id' => $host['id']));
-        if ($rows) $serverrow++;
-        if ($serverrow > 0) {
-            printmsg("DEBUG => Host ({$host['fqdn']}) cannot be deleted, it is performing duties as a DHCP server!",3);
-            $self['error'] = "ERROR => Host ({$host['fqdn']}) cannot be deleted, it is performing duties as a DHCP server!";
-            return(array(5, $self['error'] . "\n"));
-        }
-
-
-        // Check if host is a dns server
-        $serverrow = 0;
-        list($status, $rows, $srecord) = db_get_record($onadb, 'dns_server_domains', array('host_id' => $host['id']));
-        if ($rows) $serverrow++;
-
-        if ($serverrow > 0) {
-            printmsg("DEBUG => Host ({$host['fqdn']}) cannot be deleted, it is performing duties as a DNS server!",3);
-            $self['error'] = "ERROR => Host ({$host['fqdn']}) cannot be deleted, it is performing duties as a DNS server!";
-            return(array(5, $self['error'] . "\n"));
-        }
-
-        // Display an error if it has any entries in configurations
-        list($status, $rows, $server) = db_get_record($onadb, 'configurations', array('host_id' => $host['id']));
-        if ($rows) {
-            printmsg("DEBUG => Host ({$host['fqdn']}) cannot be deleted, it has config archives!",3);
-            $self['error'] = "ERROR => Host ({$host['fqdn']}) cannot be deleted, it has config archives!";
-            return(array(5, $self['error'] . "\n"));
-        }
-
-
-        // Delete interface(s)
-        // get list for logging
-        $clustcount = 0;
-        $dnscount = 0;
-        list($status, $rows, $interfaces) = db_get_records($onadb, 'interfaces', array('host_id' => $host['id']));
-
-
-        // Cant delete if one of the interfaces is primary for a cluster
-        foreach ($interfaces as $int) {
-            list($status, $rows, $records) = db_get_records($onadb, 'interface_clusters', array('interface_id' => $int['id']));
-            $clustcount = $clustcount + $rows;
-        }
-
-        if ($clustcount) {
-            $self['error'] = "ERROR => host_del() An interface on this host is primary for some interface shares, delete the share or move the interface first.";
-            printmsg($self['error'],0);
-            return(array(5, $self['error'] . "\n"));
-        }
-
-        // do the interface_cluster delete.  This just removes this host from the cluster, not the whole cluster itself
-        // It will error out as well if this interface is the primary in the cluster
-        list($status, $rows) = db_delete_records($onadb, 'interface_clusters', array('host_id' => $host['id']));
-        if ($status) {
-            $self['error'] = "ERROR => host_del() interface_cluster delete SQL Query failed: {$self['error']}";
-            printmsg($self['error'],0);
-            return(array(5, $self['error'] . "\n"));
-        }
-        // log deletions
-        printmsg("INFO => {$rows} Shared interface(s) DELETED from {$host['fqdn']}",0);
-        $add_to_error .= "INFO => {$rows} Shared interface(s) DELETED from {$host['fqdn']}\n";
-
-
-        // Delete each DNS record associated with this hosts interfaces.
-//         foreach ($interfaces as $int) {
-//             // Loop through each dns record associated with this interface.
-//             list($status, $rows, $records) = db_get_records($onadb, 'dns', array('interface_id' => $int['id']));
-//             if ($rows) {
-//                 foreach($records as $record) {
-//                     // Run the module
-//                     list($status, $output) = run_module('dns_record_del', array('name' => $record['id'], 'type' => $record['type'], 'commit' => 'Y', 'delete_by_module' => 'Y'));
-//                     $add_to_error .= $output;
-//                     $add_to_status = $add_to_status + $status;
-//                 }
-//             }
-//         }
-
-        // Delete messages
-        // get list for logging
-        list($status, $rows, $records) = db_get_records($onadb, 'messages', array('table_name_ref' => 'hosts','table_id_ref' => $host['id']));
-        // do the delete
-        list($status, $rows) = db_delete_records($onadb, 'messages', array('table_name_ref' => 'hosts','table_id_ref' => $host['id']));
-        if ($status) {
-            $self['error'] = "ERROR => host_del() message delete SQL Query failed: {$self['error']}";
-            printmsg($self['error'],0);
-            return(array(5, $self['error'] . "\n"));
-        }
-        // log deletions
-        printmsg("INFO => {$rows} Message(s) DELETED from {$host['fqdn']}",0);
-        $add_to_error .= "INFO => {$rows} Message(s) DELETED from {$host['fqdn']}\n";
-
-
-        // Delete the interfaces.. this should delete dns names and other things associated with interfaces.. 
-        foreach ($interfaces as $record) {
-            // Run the module
-            list($status, $output) = run_module('interface_del', array('interface' => $record['id'], 'commit' => 'on', 'delete_by_module' => 'Y'));
-            $add_to_error .= $output;
-            $add_to_status = $add_to_status + $status;
-        }
-
-
-
-
-        // Delete device record
-        // Count how many hosts use this same device
-        list($status, $rows, $records) = db_get_records($onadb, 'hosts', array('device_id' => $host['device_id']));
-        // if device count is just 1 do the delete
-        if ($rows == 1) {
-            list($status, $rows) = db_delete_records($onadb, 'devices', array('id' => $host['device_id']));
-            if ($status) {
-                $self['error'] = "ERROR => host_del() device delete SQL Query failed: {$self['error']}";
-                printmsg($self['error'],0);
-                return(array(5, $add_to_error . $self['error'] . "\n"));
-            }
-            // log deletions
-            printmsg("INFO => Device record DELETED: [{$record['id']}] no remaining hosts using this device",0);
-        } else {
-            printmsg("INFO => Device record NOT DELETED: [{$record['id']}] there are other hosts using this device.",1);
-        }
-
-
-        // Delete tag entries
-        list($status, $rows, $records) = db_get_records($onadb, 'tags', array('type' => 'host', 'reference' => $host['id']));
-        $log=array(); $i=0;
-        foreach ($records as $record) {
-            $log[$i]= "INFO => Tag DELETED: {$record['name']} from {$host['fqdn']}";
-            $i++;
-        }
-        //do the delete
-        list($status, $rows) = db_delete_records($onadb, 'tags', array('type' => 'host', 'reference' => $host['id']));
-        if ($status) {
-            $self['error'] = "ERROR => host_del() Tag delete SQL Query failed: {$self['error']}";
-            printmsg($self['error'],0);
-            return(array(5, $add_to_error . $self['error'] . "\n"));
-        }
-        //log deletions
-        foreach($log as $log_msg) {
-            printmsg($log_msg,0);
-            $add_to_error .= $log_msg . "\n";
-        }
-
-        // Delete custom attribute entries
-        // get list for logging
-        list($status, $rows, $records) = db_get_records($onadb, 'custom_attributes', array('table_name_ref' => 'hosts', 'table_id_ref' => $host['id']));
-        $log=array(); $i=0;
-        foreach ($records as $record) {
-            list($status, $rows, $ca) = ona_get_custom_attribute_record(array('id' => $record['id']));
-            $log[$i]= "INFO => Custom Attribute DELETED: {$ca['name']} ({$ca['value']}) from {$host['fqdn']}";
-            $i++;
-        }
-
-        //do the delete
-        list($status, $rows) = db_delete_records($onadb, 'custom_attributes', array('table_name_ref' => 'hosts', 'table_id_ref' => $host['id']));
-        if ($status) {
-            $self['error'] = "ERROR => host_del() Custom attribute delete SQL Query failed: {$self['error']}";
-            printmsg($self['error'],0);
-            return(array(5, $add_to_error . $self['error'] . "\n"));
-        }
-
-        //log deletions
-        foreach($log as $log_msg) {
-            printmsg($log_msg,0);
-            $add_to_error .= $log_msg . "\n";
-        }
-
-
-
-
-        // Delete DHCP options
-        // get list for logging
-        list($status, $rows, $records) = db_get_records($onadb, 'dhcp_option_entries', array('host_id' => $host['id']));
-        $log=array(); $i=0;
-        foreach ($records as $record) {
-            list($status, $rows, $dhcp) = ona_get_dhcp_option_entry_record(array('id' => $record['id']));
-            $log[$i]= "INFO => DHCP entry DELETED: {$dhcp['display_name']}={$dhcp['value']} from {$host['fqdn']}";
-            $i++;
-        }
-        // do the delete
-        list($status, $rows) = db_delete_records($onadb, 'dhcp_option_entries', array('host_id' => $host['id']));
-        if ($status) {
-            $self['error'] = "ERROR => host_del() DHCP option entry delete SQL Query failed: {$self['error']}";
-            printmsg($self['error'],0);
-            return(array(5, $add_to_error . $self['error'] . "\n"));
-        }
-        // log deletions
-        foreach($log as $log_msg) {
-            printmsg($log_msg,0);
-            $add_to_error .= $log_msg . "\n";
-        }
-
-        // Delete the host
-        list($status, $rows) = db_delete_records($onadb, 'hosts', array('id' => $host['id']));
-        if ($status) {
-            $self['error'] = "ERROR => host_del() host delete SQL Query failed: {$self['error']}";
-            printmsg($self['error'],0);
-            return(array(5, $add_to_error . $self['error'] . "\n"));
-        }
-
-        // Return the success notice
-        if ($add_to_status == 0) $self['error'] = "INFO => Host DELETED: {$host['fqdn']}";
-        printmsg($self['error'], 0);
-        return(array($add_to_status, $add_to_error . $self['error'] . "\n"));
-    }
-
-
-    //
-    // We are just displaying records that would have been deleted
-    //
+    $text = '';
+    $add_to_error = '';
+    $add_to_status = 0;
 
     // SUMMARY:
-    //   Display a warning if it is a server
-    //   Display a warning if it has config text entries
-    //   Display Interfaces
-    //   Display dns records
-    //   Display custom attributes
-    //   Display DHCP entries
+    //   Don't allow a delete if it is performing server duties
+    //   Don't allow a delete if config text entries exist
+    //   Delete Interfaces
+    //   Delete interface cluster entries
+    //   Delete dns records
+    //   Delete custom attributes
+    //   Delete DHCP entries
+    //   Delete device record if it is the last host associated with it.
+    
+    // IDEA: If it's the last host in a domain (maybe do the same for or a networks & vlans in the interface delete)
+    //       It could just print a notice or something.
 
-    // Otherwise just display the host record for the host we would have deleted
-    $text = "Record(s) NOT DELETED (see \"commit\" option)\n" .
-            "Displaying record(s) that would have been deleted:\n";
-
-    // Display a warning if host is performing server duties
+    // Check that it is the host is not performing server duties
+    // FIXME: MP mostly fixed..needs testing
+    $serverrow = 0;
+    // check ALL the places server_id is used and remove the entry from server_b if it is not used
     list($status, $rows, $srecord) = db_get_record($onadb, 'dhcp_server_subnets', array('host_id' => $host['id']));
-    if ($rows) {
-        $text .= "\nWARNING!  This host is a DHCP server for {$rows} subnet(s)\n";
-    }
-    list($status, $rows, $srecord) = db_get_record($onadb, 'dns_server_domains', array('host_id' => $host['id']));
-    if ($rows) {
-        $text .= "\nWARNING!  This host is a DNS server for one or more domains!\n";
-    }
+    if ($rows) $serverrow++;
     list($status, $rows, $srecord) = db_get_record($onadb, 'dhcp_failover_groups', array('primary_server_id' => $host['id']));
-    if ($rows) {
-        $text .= "\nWARNING!  This host is a server that is primary in a DHCP failover group\n";
-    }
+    if ($rows) $serverrow++;
     list($status, $rows, $srecord) = db_get_record($onadb, 'dhcp_failover_groups', array('secondary_server_id' => $host['id']));
-    if ($rows) {
-        $text .= "\nWARNING!  This host is a server that is secondary in a DHCP failover group\n";
+    if ($rows) $serverrow++;
+    if ($serverrow > 0) {
+        $self['error'] = "Host ({$host['fqdn']}) cannot be deleted, it is performing duties as a DHCP server!";
+        printmsg($self['error'], 'error');
+        return(array(5, $self['error']));
     }
 
-    // Display a warning if it has any configurations
+
+    // Check if host is a dns server
+    $serverrow = 0;
+    list($status, $rows, $srecord) = db_get_record($onadb, 'dns_server_domains', array('host_id' => $host['id']));
+    if ($rows) $serverrow++;
+
+    if ($serverrow > 0) {
+        $self['error'] = "Host ({$host['fqdn']}) cannot be deleted, it is performing duties as a DNS server!";
+        printmsg($self['error'], 'error');
+        return(array(5, $self['error']));
+    }
+
+    // Display an error if it has any entries in configurations
     list($status, $rows, $server) = db_get_record($onadb, 'configurations', array('host_id' => $host['id']));
-    if ($rows)
-        $text .= "\nWARNING!  Host can not be deleted, it has config archives!\n";
+    if ($rows) {
+        $self['error'] = "Host ({$host['fqdn']}) cannot be deleted, it has config archives!";
+        printmsg($self['error'], 'error');
+        return(array(5, $self['error']));
+    }
 
-    if ($rows)
-        $text .= "\nWARNING!  Host will NOT be deleted, due to previous warnings!\n";
 
-    // Display the Host's complete record
-    list($status, $tmp) = host_display("host={$host['id']}&verbose=N");
-    $text .= "\n" . $tmp;
+    // Delete interface(s)
+    // get list for logging
+    $clustcount = 0;
+    $dnscount = 0;
+    list($status, $rows, $interfaces) = db_get_records($onadb, 'interfaces', array('host_id' => $host['id']));
 
-    // Display count of messages
+
+    // Cant delete if one of the interfaces is primary for a cluster
+    foreach ($interfaces as $int) {
+        list($status, $rows, $records) = db_get_records($onadb, 'interface_clusters', array('interface_id' => $int['id']));
+        $clustcount = $clustcount + $rows;
+    }
+
+    if ($clustcount) {
+        $self['error'] = "An interface on this host is primary for some interface shares, delete the share or move the interface first.";
+        printmsg($self['error'],'error');
+        return(array(5, $self['error']));
+    }
+
+    // do the interface_cluster delete.  This just removes this host from the cluster, not the whole cluster itself
+    // It will error out as well if this interface is the primary in the cluster
+    list($status, $rows) = db_delete_records($onadb, 'interface_clusters', array('host_id' => $host['id']));
+    if ($status) {
+        $self['error'] = "Interface_cluster delete SQL Query failed: {$self['error']}";
+        printmsg($self['error'],'error');
+        return(array(5, $self['error']));
+    }
+    // log deletions
+    $add_to_error .= "{$rows} Shared interface(s) DELETED from {$host['fqdn']}";
+    printmsg($add_to_error,'debug');
+
+
+    // Delete each DNS record associated with this hosts interfaces.
+//    foreach ($interfaces as $int) {
+//       // Loop through each dns record associated with this interface.
+//       list($status, $rows, $records) = db_get_records($onadb, 'dns', array('interface_id' => $int['id']));
+//       if ($rows) {
+//           foreach($records as $record) {
+//               // Run the module
+//               list($status, $output) = run_module('dns_record_del', array('name' => $record['id'], 'type' => $record['type'], 'commit' => 'Y', 'delete_by_module' => 'Y'));
+//               $add_to_error .= $output;
+//               $add_to_status = $add_to_status + $status;
+//             }
+//         }
+//     }
+
+    // Delete messages
+    // get list for logging
     list($status, $rows, $records) = db_get_records($onadb, 'messages', array('table_name_ref' => 'hosts','table_id_ref' => $host['id']));
-    if ($rows) $text .= "\nASSOCIATED MESSAGE RECORDS ({$rows}):\n";
+    // do the delete
+    list($status, $rows) = db_delete_records($onadb, 'messages', array('table_name_ref' => 'hosts','table_id_ref' => $host['id']));
+    if ($status) {
+        $self['error'] = "Message delete SQL Query failed: {$self['error']}";
+        printmsg($self['error'],'error');
+        return(array(5, $self['error']));
+    }
+    // log deletions
+    $add_to_error .= "{$rows} Message(s) DELETED from {$host['fqdn']}";
+    printmsg($add_to_error,'debug');
 
-    // Display associated interface(s)
-    list($status, $int_rows, $interfaces) = db_get_records($onadb, 'interfaces', array('host_id' => $host['id']));
-    // show the dns records associated
+
+    // Delete the interfaces.. this should delete dns names and other things associated with interfaces.. 
     foreach ($interfaces as $record) {
-        list($status, $rows, $dnsrec) = db_get_records($onadb, 'dns', array('interface_id' => $record['id']));
-        if ($rows) {
-            $text .= "\nASSOCIATED DNS RECORDS ({$rows}) ON INTERFACE (" . ip_mangle($record['ip_addr'], 'dotted') . "):\n";
-            foreach ($dnsrec as $rec) {
-                // show AAAA or A type as needed
-                if ($record['ip_addr'] > 4294967295 and $rec['type'] == 'A') $rec['type'] = 'AAAA';
-                $text .= "  TYPE: [ID:{$rec['id']}] {$rec['type']}, {$rec['name']} -> " . ip_mangle($record['ip_addr'], 'dotted') . "\n";
-            }
+        // Run the module
+        list($status, $output) = run_module('interface_del', array('interface' => $record['id'], 'commit' => 'on', 'delete_by_module' => 'Y'));
+        $add_to_error .= $output;
+        $add_to_status = $add_to_status + $status;
+    }
+
+
+
+
+    // Delete device record
+    // Count how many hosts use this same device
+    list($status, $rows, $records) = db_get_records($onadb, 'hosts', array('device_id' => $host['device_id']));
+    // if device count is just 1 do the delete
+    if ($rows == 1) {
+        list($status, $rows) = db_delete_records($onadb, 'devices', array('id' => $host['device_id']));
+        if ($status) {
+            $self['error'] = "Device delete SQL Query failed: {$self['error']}";
+            printmsg($self['error'],'error');
+            return(array(5, $add_to_error . $self['error']));
         }
+        // log deletions
+        printmsg("Device record DELETED: [{$record['id']}] no remaining hosts using this device",'notice');
+    } else {
+        printmsg("Device record NOT DELETED: [{$record['id']}] there are other hosts using this device.",'notice');
     }
 
-    if ($int_rows) $text .= "\nASSOCIATED INTERFACE RECORDS ({$int_rows}):\n";
-    foreach ($interfaces as $record) {
-        $text .= "  [ID:{$record['id']}] " . ip_mangle($record['ip_addr'], 'dotted') . "\n";
-    }
 
-    // Display associated interface_clusters(s)
-    list($status, $clust_rows, $interfaceclusters) = db_get_records($onadb, 'interface_clusters', array('host_id' => $host['id']));
-
-    if ($clust_rows) $text .= "\nASSOCIATED SHARED INTERFACE RECORDS ({$clust_rows}):\n";
-    foreach ($interfaceclusters as $record) {
-        list($status, $rows, $int) = ona_get_interface_record(array('id' => $record['interface_id']));
-        $text .= "  [ID:{$int['id']}] {$int['ip_addr_text']}\n";
-    }
-
-    // Display associated tags
+    // Delete tag entries
     list($status, $rows, $records) = db_get_records($onadb, 'tags', array('type' => 'host', 'reference' => $host['id']));
-    if ($rows) $text .= "\nASSOCIATED TAG RECORDS ({$rows}):\n";
+    $log=array(); $i=0;
     foreach ($records as $record) {
-        $text .= "  {$record['name']}\n";
+        $log[$i]= "Tag DELETED: {$record['name']} from {$host['fqdn']}";
+        $i++;
+    }
+    //do the delete
+    list($status, $rows) = db_delete_records($onadb, 'tags', array('type' => 'host', 'reference' => $host['id']));
+    if ($status) {
+        $self['error'] = "Tag delete SQL Query failed: {$self['error']}";
+        printmsg($self['error'],'error');
+        return(array(5, $add_to_error . $self['error']));
+    }
+    //log deletions
+    foreach($log as $log_msg) {
+        printmsg($log_msg,'notice');
+        $add_to_error .= $log_msg;
     }
 
-    // Display associated custom attributes
+    // Delete custom attribute entries
+    // get list for logging
     list($status, $rows, $records) = db_get_records($onadb, 'custom_attributes', array('table_name_ref' => 'hosts', 'table_id_ref' => $host['id']));
-    if ($rows) $text .= "\nASSOCIATED CUSTOM ATTRIBUTE RECORDS ({$rows}):\n";
+    $log=array(); $i=0;
     foreach ($records as $record) {
         list($status, $rows, $ca) = ona_get_custom_attribute_record(array('id' => $record['id']));
-        $text .= "  {$ca['name']} => {$ca['value']}\n";
+        $log[$i]= "Custom Attribute DELETED: {$ca['name']} ({$ca['value']}) from {$host['fqdn']}";
+        $i++;
     }
 
-    // Display associated DHCP entries
+    //do the delete
+    list($status, $rows) = db_delete_records($onadb, 'custom_attributes', array('table_name_ref' => 'hosts', 'table_id_ref' => $host['id']));
+    if ($status) {
+        $self['error'] = "Custom attribute delete SQL Query failed: {$self['error']}";
+        printmsg($self['error'],'error');
+        return(array(5, $add_to_error . $self['error']));
+    }
+
+    //log deletions
+    foreach($log as $log_msg) {
+        printmsg($log_msg,'notice');
+        $add_to_error .= $log_msg;
+    }
+
+
+
+
+    // Delete DHCP options
+    // get list for logging
     list($status, $rows, $records) = db_get_records($onadb, 'dhcp_option_entries', array('host_id' => $host['id']));
-    if ($rows) $text .= "\nASSOCIATED DHCP OPTION RECORDS ({$rows}):\n";
+    $log=array(); $i=0;
     foreach ($records as $record) {
         list($status, $rows, $dhcp) = ona_get_dhcp_option_entry_record(array('id' => $record['id']));
-        $text .= "  {$dhcp['display_name']} => {$dhcp['value']}\n";
+        $log[$i]= "DHCP entry DELETED: {$dhcp['display_name']}={$dhcp['value']} from {$host['fqdn']}";
+        $i++;
+    }
+    // do the delete
+    list($status, $rows) = db_delete_records($onadb, 'dhcp_option_entries', array('host_id' => $host['id']));
+    if ($status) {
+        $self['error'] = "DHCP option entry delete SQL Query failed: {$self['error']}";
+        printmsg($self['error'],'error');
+        return(array(5, $add_to_error . $self['error']));
+    }
+    // log deletions
+    foreach($log as $log_msg) {
+        printmsg($log_msg,'notice');
+        $add_to_error .= $log_msg;
     }
 
+    // Delete the host
+    list($status, $rows) = db_delete_records($onadb, 'hosts', array('id' => $host['id']));
+    if ($status) {
+        $self['error'] = "Host delete SQL Query failed: {$self['error']}";
+        printmsg($self['error'],'error');
+        return(array(5, $add_to_error . $self['error']));
+    }
 
-
-    return(array(7, $text));
+    // Return the success notice
+    if ($add_to_status == 0) $self['error'] = "Host DELETED: {$host['fqdn']}";
+    printmsg($self['error'], 'notice');
+    return(array($add_to_status, $self['error']));
 }
 
 

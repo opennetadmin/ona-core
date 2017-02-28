@@ -932,18 +932,25 @@ function ona_get_record($where="", $table="", $order="") {
 //   name        => the base hostname
 //   fqdn        => the fqdn of the host (based on it's primary_dns_id)
 //   domain_id   => domain id for the associated primary_dns_id
-//   domain_name => domain name for the associated primary_dns_id's domain
+//   domain_fqdn => domain name for the associated primary_dns_id's domain
 function ona_get_host_record($array='', $order='') {
     $status_dns = 0;
     list($status, $rows, $record) = ona_get_record($array, 'hosts', $order);
     if ($rows) {
       list($status_dns, $rows_dns, $dns) = ona_get_dns_record(array('id' => $record['primary_dns_id']));
-      $record['name'] = $dns['name'];
-      $record['fqdn'] = $dns['fqdn'];
-      $record['primary_interface_id'] = $dns['interface_id'];
-      $record['dns_view_id'] = $dns['dns_view_id'];
-      $record['domain_id'] = $dns['domain_id'];
-      $record['domain_fqdn'] = $dns['domain_fqdn'];
+      if ($rows_dns) {
+        $record['name'] = $dns['name'];
+        $record['fqdn'] = $dns['fqdn'];
+        $record['primary_interface_id'] = $dns['interface_id'];
+        $record['dns_view_id'] = $dns['dns_view_id'];
+        $record['domain_id'] = $dns['domain_id'];
+        $record['domain_fqdn'] = $dns['domain_fqdn'];
+      } else {
+        $record['name'] = '';
+        $record['fqdn'] = '';
+        $record['primary_interface_id'] = 0;
+        $record['domain_fqdn'] = '';
+      }
     }
     return(array($status + $status_dns, $rows, $record));
 }
@@ -974,6 +981,10 @@ function ona_get_domain_record($array='', $order='') {
 // Returns an additional "fqdn" field for some dns records
 function ona_get_dns_record($array='', $order='') {
     list($status, $rows, $record) = ona_get_record($array, 'dns', $order);
+
+    // set some place holders
+    $record['fqdn'] = '';
+    $record['domain_fqdn'] = '';
 
     if ($rows) {
       if ($record['type'] == 'A' or $record['type'] == 'TXT') {
@@ -1379,9 +1390,9 @@ function ona_find_host($search="") {
     // Find the 'first', domain name piece of $search
     list($status, $rows, $domain) = ona_find_domain($search,0);
     if (!isset($domain['id'])) {
-        printmsg("Unable to determine domain name portion of ({$search})!", 'notice');
         $self['error'] = "Unable to determine domain name portion of ({$search})!";
-        return(array(3, $self['error']));
+        printmsg($self['error'], 'debug');
+        return(array(3, 0, $self['error']));
     }
     printmsg("Returned: {$domain['fqdn']}", 'debug');
 
@@ -1655,7 +1666,6 @@ function ona_find_dns_record($search="",$type='',$int_id=0) {
 //    2  :: No (unique?) match found
 ///////////////////////////////////////////////////////////////////////
 function ona_find_location($search="") {
-    printmsg("DEBUG => ona_find_location({$search}) called", 3);
 
     // Validate input
     if ($search == "") {
@@ -1668,7 +1678,7 @@ function ona_find_location($search="") {
         list($status, $rows, $record) = ona_get_location_record(array('id' => $search));
         // If we got it, return it
         if ($status == 0 and $rows == 1) {
-            printmsg("DEBUG => ona_find_location() found location record by id", 2);
+            printmsg("Found location record by id", 'debug');
             return(array(0, $rows, $record));
         }
 
@@ -1676,7 +1686,7 @@ function ona_find_location($search="") {
         list($status, $rows, $record) = ona_get_location_record(array('zip_code' => $search));
         // If we got it, return it
         if ($status == 0 and $rows == 1) {
-            printmsg("DEBUG => ona_find_location() found location record by zip code search", 2);
+            printmsg("Found location record by zip code search", 'debug');
             return(array(0, $rows, $record));
         }
     }
@@ -1687,7 +1697,7 @@ function ona_find_location($search="") {
         list($status, $rows, $record) = ona_get_location_record(array($field => $search));
         // If we got it, return it
         if ($status == 0 and $rows == 1) {
-            printmsg("DEBUG => ona_find_location() found location record by $field search", 2);
+            printmsg("Found location record by $field search", 'debug');
             return(array(0, $rows, $record));
         }
     }
@@ -1698,7 +1708,7 @@ function ona_find_location($search="") {
         list($status, $rows, $record) = ona_get_location_record(array($field => $search));
         // If we got it, return it
         if ($status == 0 and $rows == 1) {
-            printmsg("DEBUG => ona_find_location() found location record by UPPER($field) search", 2);
+            printmsg("Found location record by UPPER($field) search", 'debug');
             return(array(0, $rows, $record));
         }
     }
@@ -1709,13 +1719,13 @@ function ona_find_location($search="") {
         list($status, $rows, $record) = ona_get_location_record(array($field => $search));
         // If we got it, return it
         if ($status == 0 and $rows == 1) {
-            printmsg("DEBUG => ona_find_location() found location record by LOWER($field) search", 2);
+            printmsg("Found location record by LOWER($field) search", 'debug');
             return(array(0, $rows, $record));
         }
     }
 
     // We didn't find it - return and error code, 0 matches, and an empty record.
-    printmsg("DEBUG => ona_find_location() couldn't find a unique location record with specified search criteria", 2);
+    printmsg("Couldn't find a unique location record with specified search criteria", 'info');
     return(array(2, 0, array()));
 }
 
@@ -2032,7 +2042,7 @@ function ona_find_device_type($search="") {
     global $self;
 
     // Validate input
-    if ($search == "") {
+    if ($search == '') {
         return(array(1, 0, array()));
     }
 
@@ -2042,7 +2052,7 @@ function ona_find_device_type($search="") {
         list($status, $rows, $record) = ona_get_device_type_record(array('id' => $search));
         // If we got it, return it
         if ($status == 0  and $rows == 1) {
-            printmsg("DEBUG => ona_find_device_type() found device_type record by id", 2);
+            printmsg("Found device_type record by id", 'debug');
             return(array(0, $rows, $record));
         }
 /* PK: this was the original code...
@@ -2057,25 +2067,29 @@ function ona_find_device_type($search="") {
     }
 
     // It's a string - do several sql queries and see if we can get a unique match
-    list($manufmodel, $role) = preg_split("/\(/",$search);
-    list($manuf, $model) = preg_split("/, /",$manufmodel);
-    $role = preg_replace(array('/\(/','/\)/'),'',"{$role}");
-    list($status, $rows, $manu) = ona_get_manufacturer_record(array('name' => $manuf));
-    list($status, $rows, $rol) = ona_get_role_record(array('name' => $role));
-    list($status, $rows, $record) = ona_get_model_record(array('name' => $model,'manufacturer_id' => $manu['id']));
-    if ($status == 0 and $rows == 1) {
-        list($status, $rows, $record) = ona_get_device_type_record(array('model_id' => $record['id'],'role_id' => $rol['id']));
+    preg_match_all('/(?P<manuf>\w+), (?P<model>\w+) \((?P<role>\w+)\)/', $search, $parts);
+    if (isset($parts['manuf'][0]))
+      list($status, $rows, $manu) = ona_get_manufacturer_record(array('name' => $parts['manuf'][0]));
+    if (isset($parts['role'][0]))
+      list($status, $rows, $rol) = ona_get_role_record(array('name' => $parts['role'][0]));
+    if (isset($parts['model'][0]))
+      list($status, $rows, $mod) = ona_get_model_record(array('name' => $parts['model'][0],'manufacturer_id' => $manu['id']));
+    if (isset($rows) and $rows) {
+      list($status, $rows, $record) = ona_get_device_type_record(array('model_id' => $mod['id'],'role_id' => $rol['id']));
+
+      // add a full model description
+      $record['model_description'] = "{$manu['name']}, {$mod['name']} ({$rol['name']})";
     }
+
     // If we got it, return it
-    if ($status == 0 and $rows == 1) {
-        printmsg("DEBUG => ona_find_device_type() found device_type record by model name", 2);
+    if (isset($rows) and $rows) {
+        printmsg("Found device_type record by model name", 'debug');
         return(array(0, $rows, $record));
     }
 
-
     // We didn't find it - return and error code, 0 matches, and an empty record.
-    $self['error'] = "NOTICE => couldn't find a unique device_type record with specified search criteria";
-    printmsg($self['error'], 2);
+    $self['error'] = "Couldn't find a unique device_type record with specified search criteria";
+    printmsg($self['error'], 'info');
     return(array(2, 0, array()));
 
 }

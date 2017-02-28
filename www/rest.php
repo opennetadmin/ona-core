@@ -83,8 +83,7 @@ $app->group('/v1', function () {
 
   $this->group('/interfaces', function () {
     new ONA\controllers\interfaces($this);
-    # HMM should I force adding interfaces under /hosts? or allow here too?
-    $this->map(['GET'], '', 'ONA\controllers\interfaces:Any');
+    $this->map(['GET', 'POST'], '', 'ONA\controllers\interfaces:Any');
 
     $this->group('/{interface}', function () {
       $this->map(['GET', 'DELETE', 'POST'], '', 'ONA\controllers\interfaces:Specific');

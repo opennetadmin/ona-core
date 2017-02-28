@@ -130,53 +130,37 @@ function interface_add($options="") {
     // Return the usage summary if we need to
     if (!(isset($options['host']) and isset($options['ip'])) ) {
         $self['error'] = 'Insufficient parameters';
-        return(array(1,
-<<<EOM
-
-interface_add-v{$version}
-Adds a new interface to an existing host record
-
-  Synopsis: interface_add [KEY=VALUE] ...
-
-  Required:
-    host=NAME[.DOMAIN] or ID  hostname or ID new interface is associated with
-    ip=ADDRESS                ip address (numeric or dotted)
-
-  Optional:
-    mac=ADDRESS               mac address (most formats are ok)
-    name=NAME                 interface name (i.e. "FastEthernet0/1.100")
-    description=TEXT          brief description of the interface
-    natip=ADDRESS             IP of NAT address to add with this new interface
-    addptr                    Auto add a PTR record for new IP
-
-  Notes:
-    * DOMAIN will default to {$conf['dns_defaultdomain']} if not specified
-\n
-EOM
-        ));
+        return(array(1,$self['error']));
     }
 
     // clean up what is passed in
     if (isset($options['ip']))
       $options['ip'] = trim($options['ip']);
 
-    // Set options[force] to N if it's not set
-    if (isset($options['force']))
-      $options['force'] = sanitize_YN($options['force'], 'N');
-
-    // Set options[addptr] and options[create_a] to Y if they're not set
-    if (isset($options['addptr']))
-      $options['addptr'] = sanitize_YN($options['addptr'], 'Y');
-
-    // Warn about 'name' and 'description' fields exceeding max lengths
-    if(strlen($options['name']) > 255) {
-        $self['error'] = "'name' exceeds maximum length of 255 characters.";
-        return(array(2, $self['error']));
+    if (isset($options['name'])) {
+      $options['name'] = trim($options['name']);
+    } else {
+      $options['name'] = '';
     }
 
-    if(strlen($options['description']) > 255) {
-        $self['error'] = "'description' exceeds maximum length of 255 characters.";
-        return(array(2, $self['error']));
+    if (isset($options['description'])) {
+      $options['description'] = trim($options['description']);
+    } else {
+      $options['description'] = '';
+    }
+
+    // Set options[force] to N if it's not set
+    if (isset($options['force'])) {
+      $options['force'] = sanitize_YN($options['force'], 'N');
+    } else {
+      $options['force'] = 'N';
+    }
+
+    // Set options[addptr] and options[create_a] to Y if they're not set
+    if (isset($options['addptr'])) {
+      $options['addptr'] = sanitize_YN($options['addptr'], 'Y');
+    } else {
+      $options['addptr'] = 'Y';
     }
 
     // Find the Host they are looking for
@@ -220,7 +204,7 @@ EOM
         printmsg($self['error'], 'error');
         return(array(6, $self['error']));
     }
-    printmsg("Subnet selected: {$subnet['description']}", 'info');
+    printmsg("Subnet selected: {$subnet['name']}", 'info');
 
     // Validate that the IP address supplied isn't the base or broadcast of the subnet, as long as it is not /32 or /31
     if ($subnet['ip_mask'] < 4294967294) {
@@ -238,7 +222,7 @@ EOM
 
 
     // Remove any MAC address formatting
-    if ($options['mac']) {
+    if (isset($options['mac'])) {
         $options['mac'] = trim($options['mac']);
         $orig_mac = $options['mac'];
         $options['mac'] = mac_mangle($options['mac'], 1);
@@ -263,9 +247,6 @@ EOM
         $options['mac'] = '';
     }
 
-    if (!isset($options['name'])) {
-        $options['name'] = '';
-    }
     // Check permissions
     if (!auth('host_add')) {
         $self['error'] = "Permission denied!";
@@ -293,8 +274,8 @@ EOM
                 'subnet_id'                => $subnet['id'],
                 'ip_addr'                  => $options['ip'],
                 'mac_addr'                 => $options['mac'],
-                'name'                     => trim($options['name']),
-                'description'              => trim($options['description'])
+                'name'                     => $options['name'],
+                'description'              => $options['description']
             )
         );
     if ($status or !$rows) {
@@ -305,14 +286,14 @@ EOM
 
     // Run the module to add a PTR record if requested
     if ($options['addptr'] == 'Y') {
+        // Pass options in and override a few things
+        $ptropts = $options;
         $ptropts['name'] = $host['fqdn'];
-        $ptropts['ip'] = $options['ip'];
-        $ptropts['view'] = $options['view'];
         $ptropts['type'] = 'PTR';
         printmsg("calling dns_record_add() for new PTR record: {$options['ip']}", 'debug');
         list($status, $output) = run_module('dns_record_add', $ptropts);
         if ($status) { return(array($status, $output)); }
-        $self['error'] .= $output;
+        $self['error'] .= $output['status_msg']. ' ';
     }
 
     // if natip is passed, add the nat interface first
@@ -322,7 +303,7 @@ EOM
         printmsg("calling nat_add() for new ip: {$options['natip']}", 'debug');
         list($status, $output) = run_module('nat_add', $natint);
         if ($status) { return(array($status, $output)); }
-        $self['error'] .= $output;
+        $self['error'] .= $output['status_msg']. ' ';
     }
 
 
@@ -333,7 +314,7 @@ EOM
     ksort($result['interfaces'][0]);
 
     // Return the success notice
-    $self['error'] = "Interface ADDED: " . ip_mangle($options['ip'], 'dotted');
+    $self['error'] .= "Interface ADDED: " . ip_mangle($options['ip'], 'dotted');
     printmsg($self['error'], 'notice');
     return(array(0, $result));
 }
@@ -387,34 +368,8 @@ function interface_modify($options="") {
         !$options['set_last_response'] and
         !$options['set_name']
        ) ) {
-        // NOTE: Help message lines should not exceed 80 characters for proper display on a console
-        $self['error'] = 'ERROR => Insufficient parameters';
-        return(array(1,
-<<<EOM
-
-interface_modify-v{$version}
-Modify an interface record
-
-  Synopsis: interface_modify [KEY=VALUE] ...
-
-  Required:
-    interface=ID or IP or MAC     interface ID or IP address
-     or
-    host=NAME[.DOMAIN] or ID      find interface by hostname or host_id
-
-    set_ip=IP                     change IP address (numeric or dotted format)
-    set_mac=ADDRESS               change the mac address (most formats ok)
-    set_name=NAME                 interface name (i.e. "FastEthernet0/1.100")
-    set_description=TEXT          description (i.e. "VPN link to building 3")
-    set_last_response=DATE        date ip was last seen
-
-  Optional:
-    use_primary[=Y]               use the host's primary interface (only applies
-                                  when "host" option is used!). NOTE: dcm.pl
-                                  requires a value ("Y").
-\n
-EOM
-        ));
+        $self['error'] = 'Insufficient parameters';
+        return(array(1,$self['error']));
     }
 
 
@@ -763,7 +718,7 @@ function interface_del($options="") {
         }
     }
 
-    printmsg("Deleting interface: ID {$interface['id']}", 'notice');
+    printmsg("Deleting interface: {$interface['ip_addr_text']}", 'notice');
 
     if ($interface['nat_interface_id'] > 0) {
         list($status, $output) = run_module('interface_del', array('interface' => $interface['nat_interface_id'], 'commit' => 'Y', 'delete_by_module' => 'Y'));
@@ -783,7 +738,7 @@ function interface_del($options="") {
             // interface that is used in a primary dns record
             if (isset($options['delete_by_module'])) $int_dns_deloptions['delete_by_module'] = 'Y';
             list($status, $output) = run_module('dns_record_del', $int_dns_deloptions);
-            $add_to_error .= $output;
+            $add_to_error .= $output. ' ';
             $add_to_status = $add_to_status + $status;
         }
     }
@@ -907,28 +862,7 @@ function interface_display($options="") {
     // Return the usage summary if we need to
     if ((!isset($options['host']) and !isset($options['interface']))) {
         $self['error'] = 'Insufficient parameters';
-        return(array(1,
-<<<EOM
-
-interface_display-v{$version}
-Displays an interface record from the database
-
-  Synopsis: interface_display [KEY=VALUE] ...
-
-  Required:
-    interface=[ID|IP|MAC]         display interface by search string
-     or
-    host=NAME[.DOMAIN] or ID      display interface by hostname or host_id
-
-  Optional:
-    verbose=[yes|no]              display additional info (yes)
-
-  Notes:
-    * If search returns more than one interface, an error is displayed
-    * DOMAIN will default to {$conf['dns_defaultdomain']} if not specified
-\n
-EOM
-        ));
+        return(array(1,$self['error']));
     }
 
     // Sanitize "options[verbose]" (yes is the default)
