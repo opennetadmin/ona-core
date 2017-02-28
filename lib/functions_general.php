@@ -279,7 +279,7 @@ function ip_mangle_no_gmp($ip="", $format="default") {
     // Is it in CIDR format (3)?
     else if (preg_match('/^\/?(\d{1,2})$/', $ip, $matches)) {
         if (!($matches[1] >= 0 && $matches[1] <= 32)) {
-            $self['error'] = "ERROR => Invalid CIDR mask";
+            #$self['error'] = "ERROR => Invalid CIDR mask";
             return(-1);
         }
         // So create a binary string of 1's and 0's and convert it to an int
@@ -309,7 +309,7 @@ function ip_mangle_no_gmp($ip="", $format="default") {
 
     // If the address wasn't valid return an error
     if ($ip == -1) {
-        $self['error'] = "ERROR => Invalid IP address";
+        #$self['error'] = "ERROR => Invalid IP address";
         return(-1);
     }
 
@@ -330,7 +330,7 @@ function ip_mangle_no_gmp($ip="", $format="default") {
         // then make sure it's all 1's followed by all 0's.
         $binary = str_pad(decbin($ip), 32, "0", STR_PAD_LEFT);
         if (!(preg_match('/^1+0*$/', $binary))) {
-            $self['error'] = "ERROR => IP address specified is not a valid netmask";
+            #$self['error'] = "ERROR => IP address specified is not a valid netmask";
             return(-1);
         }
         // Return the number of 1's at the beginning of the binary representation of $ip
@@ -350,7 +350,7 @@ function ip_mangle_no_gmp($ip="", $format="default") {
     }
 
     else {
-        $self['error'] = "ERROR => ip_mangle() Invalid IP address format specified!";
+        #$self['error'] = "ERROR => ip_mangle() Invalid IP address format specified!";
         return(-1);
     }
 
@@ -497,7 +497,7 @@ function ip_mangle_gmp($ip="", $format="default") {
     // Is input in IPv4 dotted format (2)?
     if (preg_match('/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/', $ip)) {
         if($ip != long2ip(ip2long($ip))) {
-            $self['error'] = "ERROR => Invalid IPv4 address";
+            #$self['error'] = "ERROR => Invalid IPv4 address";
             return(-1);
         }
         $ip = gmp_init(sprintf("%u", ip2long($ip)), 10);
@@ -507,7 +507,7 @@ function ip_mangle_gmp($ip="", $format="default") {
     // Is it in IPv4/IPv6 CIDR format (3)?
     else if (preg_match('/^\/?(\d{1,3})$/', $ip, $matches)) {
         if (!($matches[1] >= 0 && $matches[1] <= 128)) {
-            $self['error'] = "ERROR => Invalid CIDR mask";
+            #$self['error'] = "ERROR => Invalid CIDR mask";
             return(-1);
         }
 
@@ -569,7 +569,7 @@ function ip_mangle_gmp($ip="", $format="default") {
     // check for out-of-range values (< 0 or > 2**128)
     if (gmp_cmp(gmp_init(-1), $ip) >= 0 or
         gmp_cmp(gmp_pow("2", 128), $ip) <= 0) {
-        $self['error'] = "ERROR => Invalid IP address";
+        #$self['error'] = "ERROR => Invalid IP address";
         return(-1);
     }
 
@@ -599,7 +599,7 @@ function ip_mangle_gmp($ip="", $format="default") {
             $cidr_bits = 128;
         $binary = str_pad(gmp_strval($ip, 2), $cidr_bits, "0", STR_PAD_LEFT);
         if (!(preg_match('/^1+0*$/', $binary))) {
-            $self['error'] = "ERROR => IP address specified is not a valid netmask";
+            #$self['error'] = "ERROR => IP address specified is not a valid netmask";
             return(-1);
         }
         // Return the number of 1's at the beginning of the binary representation of $ip
@@ -643,7 +643,7 @@ function ip_mangle_gmp($ip="", $format="default") {
     }
 
     else {
-        $self['error'] = "ERROR => ip_mangle() Invalid IP address format specified!";
+        #$self['error'] = "ERROR => ip_mangle() Invalid IP address format specified!";
         return(-1);
     }
 }
@@ -885,7 +885,10 @@ function mac_mangle($input="", $format="default") {
     global $self;
 
     // Make sure we got input
-    if (!$input) { $self['error'] = "ERROR => MAC address was null"; return(-1); }
+    if (!$input) { 
+      #$self['error'] = "ERROR => MAC address was null";
+      return(-1);
+    }
 
     $matches = array();
 
@@ -905,7 +908,7 @@ function mac_mangle($input="", $format="default") {
     }
 
     else {
-        $self['error'] = "ERROR => Invalid MAC address";
+    #    $self['error'] = "Invalid MAC address";
         return(-1);
     }
 
@@ -925,7 +928,7 @@ function mac_mangle($input="", $format="default") {
     }
 
     else {
-        $self['error'] = "ERROR => mac_mangle() Invalid MAC format specified!";
+    #    $self['error'] = "Invalid MAC format specified!";
         return(-1);
     }
 
@@ -1288,7 +1291,7 @@ function load_module($name='') {
     global $conf, $self, $onadb;
 
     if (!$name) {
-        $self['error'] = "ERROR => load_module() No module specified!";
+        $self['error'] = "load_module() No module specified!";
         return(1);
     }
 
@@ -1305,7 +1308,7 @@ function load_module($name='') {
     // Make sure the user requested a valid "module"
     if (!array_key_exists($name, $self['cache']['modules'])) {
         // Otherwise print an error
-        $self['error'] = "ERROR => The requested module is not valid!";
+        $self['error'] = "The requested module is not valid!";
         return(1);
     }
 
@@ -1313,14 +1316,14 @@ function load_module($name='') {
     // We have to find out which file it's in.
     list($status, $rows, $module) = db_get_record($onadb, 'dcm_module_list', array('name' => $name));
     if ($status or $rows != 1) {
-        $self['error'] = 'ERROR => The specified module does not exist';
+        $self['error'] = 'The specified module does not exist';
         return(1);
     }
     $file = $conf['dcm_module_dir'] . '/' . $module['file'];
 
     if (!is_file($file)) {
         // Otherwise print an error
-        $self['error'] = "ERROR => The include file ({$file}) for the {$name} module doesn't exist!";
+        $self['error'] = "The include file ({$file}) for the {$name} module doesn't exist!";
         return(1);
     }
 
@@ -1331,7 +1334,7 @@ function load_module($name='') {
 
     // Test that the module function existed in the file we just loaded
     if (!function_exists($name)) {
-        $self['error'] = "ERROR => The module function {$name} doesn't exist in file: {$file}";
+        $self['error'] = "The module function {$name} doesn't exist in file: {$file}";
         return(1);
     }
 
@@ -1353,12 +1356,13 @@ function load_module($name='') {
 //  Runs the specified module and returns the status and output
 //  of the specified module.
 //
+//  Wraps the run of the module in a transaction that can rollback if it fails
+//
 //  Input Values:
 //    $module  = the name of the module to run.
 //    $options = an array of key => value pairs to pass to the module,
 //               or an already formatted string of the key => value
 //               pairs.
-//    $transaction = set to 0 or false to disable transaction code.
 //
 //  Return Values:
 //    Returns a two part array: array($status, $output)
@@ -1371,8 +1375,10 @@ function load_module($name='') {
 //  Example:
 //      list($status, $text) = run_module('alias_del', array('alias' => 'time01'));
 ///////////////////////////////////////////////////////////////////////
-function run_module($module='', $options='', $transaction=1) {
+function run_module($module='', $options='') {
     global $conf, $self, $onadb;
+
+    $has_trans = 0;
 
     // Build the options array string from $options_string if we need to
     // This is only used for logging!  If $options_string is an array it
@@ -1385,43 +1391,39 @@ function run_module($module='', $options='', $transaction=1) {
             // Quote any "special" characters in the value.
             // Specifically the '=' and '&' characters need to be escaped.
             $options[$key] = str_replace(array('=', '&'), array('\=', '\&'), $options[$key]);
-            // If the key has no value or it is the javascript key, dont print it.
-            if (($options[$key] != "") and ($key != 'js')) {
+            // If the key has no value or it is the javascript key, or is 'config' dont print it.
+            if (($options[$key] != "") and ($key != 'js') and ($key != 'config')) {
                 $options_string .= "{$and}{$key}={$options[$key]}";
                 $and = '&';
             }
         }
     }
 
+/*
     // get the options as an array so we can look for logging info
     $local_options = parse_options($options);
 
     // If the user passes in an option called 'module_loglevel' then use it as the run module output level
     // otherwise default it to 1 so it will print out as normal.
     $log_level = 1;
-    if ($local_options['module_loglevel']) {
+    if (isset($local_options['module_loglevel'])) {
         $log_level = $local_options['module_loglevel'];
     }
-
-    // Remove config info as it can be huge and could have sensitive info in it.
-    // This could cause issues since I"m doing & as an anchor at the end.  see how it goes.
-    // The module that is called could also display this information depending on debug level
-    $options_string = preg_replace("/config=.*&/", '', $options_string);
-
-    printmsg("INFO => Running module: {$module} options: {$options_string}", $log_level);
-
-    // Load the module
-    if (load_module($module)) { return(array(1, $self['error'] . "\n")); }
+*/
 
     // Start an DB transaction (If the database supports it)
-    if ($transaction) $has_trans = $onadb->BeginTrans();
-    if (!$has_trans) printmsg("WARNING => Transactions support not available on this database, this can cause problems!", 1);
-
-    // If begintrans worked and we support transactions, do the smarter "starttrans" function
-    if ($has_trans) {
-        printmsg("DEBUG => Commiting transaction", 2);
-        $onadb->StartTrans();
+    $has_trans = $onadb->BeginTrans();
+    if (!$has_trans) {
+      $self['error'] = "The database does not support transactions. The ability to rollback is required.";
+      printmsg($self['error'], 'error');
+      return(array(1, $self['error']));
     }
+
+    printmsg("Running module: {$module} options: {$options_string}", 'notice');
+
+    // Start our transaction
+    printmsg("Starting transaction", 'debug');
+    $onadb->StartTrans();
 
     // Start a timer so we can display moudle run time if debugging is enabled
     $start_time = microtime_float();
@@ -1431,34 +1433,29 @@ function run_module($module='', $options='', $transaction=1) {
 
     // Stop the timer, and display how long it took
     $stop_time = microtime_float();
-    printmsg("DEBUG => [Module_runtime] " . round(($stop_time - $start_time), 2) . " seconds -- [Total_SQL_Queries] " . $self['db_get_record_count'] . " --  [Module_exit_code] {$status}", 1);
+
+    printmsg("[Module_runtime] " . round(($stop_time - $start_time), 2) . " seconds -- [Total_SQL_Queries] " . $self['db_get_record_count'] . " --  [Module_exit_code] {$status}", 'debug');
 
     // Either commit, or roll back the transaction
-    if ($transaction and $has_trans) {
-        if ($status != 0) {
-            printmsg("INFO => There was a module error, marking transaction for a Rollback!", 1);
-            //$onadb->RollbackTrans();
-            $onadb->FailTrans();
-        }
+    if ($status != 0) {
+        $onadb->FailTrans();
     }
 
-    if ($has_trans) {
-        // If there was any sort of failure, make sure the status has incremented, this catches sub module output errors;
-        if ($onadb->HasFailedTrans()) $status = $status + 1;
+    // If there was any sort of failure, make sure the status has incremented, this catches sub module output errors;
+    if ($onadb->HasFailedTrans()) $status = $status + 1;
 
         // If the user passed the rollback flag then dont commit the transaction
 // FIXME: not complete or tested.. it would be nice to have an ability for the user to pass
 //        a rollback flag to force the transaction to rollback.. good for testing adds/modify.
 //        The problem is sub modules will fire and then the whole thing stops so you wont see/test the full operation.
 //         if ($local_options['rollback']) {
-//             printmsg("INFO => The user requested to mark the transaction for a rollback, no changes made.", 0);
-//             $output .= "INFO => The user requested to mark the transaction for a rollback, no changes made.\n";
+//             printmsg("The user requested to mark the transaction for a rollback, no changes made.", 'notice');
+//             $output .= "The user requested to mark the transaction for a rollback, no changes made.";
 //             $status = $status + 1;
 //         }
 
-        printmsg("DEBUG => Commiting transaction", 2);
-        $onadb->CompleteTrans();
-    }
+    printmsg("Commiting transaction", 'debug');
+    $onadb->CompleteTrans();
 
     // Return the module's output
     return(array($status, $output));
