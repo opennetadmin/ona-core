@@ -1003,9 +1003,9 @@ function ip_complete($ip='', $filler=0) {
 
     // Build $ip with $filler
     $ip = $matches[1];
-    if (is_numeric($matches[2])) { $ip .= ".{$matches[2]}"; } else { $ip .= ".{$filler}"; }
-    if (is_numeric($matches[3])) { $ip .= ".{$matches[3]}"; } else { $ip .= ".{$filler}"; }
-    if (is_numeric($matches[4])) { $ip .= ".{$matches[4]}"; } else { $ip .= ".{$filler}"; }
+    if (isset($matches[2]) and is_numeric($matches[2])) { $ip .= ".{$matches[2]}"; } else { $ip .= ".{$filler}"; }
+    if (isset($matches[3]) and is_numeric($matches[3])) { $ip .= ".{$matches[3]}"; } else { $ip .= ".{$filler}"; }
+    if (isset($matches[4]) and is_numeric($matches[4])) { $ip .= ".{$matches[4]}"; } else { $ip .= ".{$filler}"; }
 
     return(ip_mangle($ip, 'dotted'));
 }

@@ -267,7 +267,7 @@ function domain_del($options="") {
 
     // Test that the domain actually exists.
     list($status, $tmp_rows, $entry) = ona_get_domain_record($domainsearch);
-    if (!$entry['id']) {
+    if (!isset($entry['id'])) {
         $self['error'] = "Unable to find a domain record using ID {$options['domain']}!";
         printmsg($self['error'],'error');
         return(array(4, $self['error']));
@@ -483,7 +483,7 @@ EOM
         list($status, $rows, $domain) = ona_get_domain_record(array('name' => $options['set_name']));
 
         // Test to see that the new entry isnt already used
-        if ($domain['id'] and $domain['id'] != $entry['id']) {
+        if (isset($domain['id']) and $domain['id'] != $entry['id']) {
             $self['error'] = "The domain specified ({$options['set_name']}) already exists!";
             printmsg($self['error'],'error');
             return(array(6, $self['error']));
@@ -526,7 +526,7 @@ EOM
     }
 
     // Get the domain record before updating (logging)
-    list($status, $rows, $original_domain) = ona_get_domain_record(array('id'=>$entry['id']));
+    $original_record = $entry;
 
     // Update the record
     if (count($SET) > 0) {
@@ -538,9 +538,6 @@ EOM
       }
     }
 
-    // Get the entry again to display details
-    list($status, $rows, $new_domain) = ona_get_domain_record(array('id'=>$entry['id']));
-
     // TRIGGER:Now that we have updated the domain, lets mark the domain on all the servers for a rebuild to pick up any new SOA info.
     list($status, $rows) = db_update_record($onadb, 'dns_server_domains', array('domain_id' => $entry['id']), array('rebuild_flag' => 1));
     if ($status) {
@@ -549,11 +546,20 @@ EOM
         return(array(7, $self['error']));
     }
 
+
+    // Return the success notice
+    $result['status_msg'] = 'Domain UPDATED.';
+    $result['module_version'] = $version;
+    list($status, $rows, $new_record) = ona_get_domain_record(array('id' => $entry['id']));
+    $result['domains'][0] = $new_record;
+
+    ksort($result['domains'][0]);
+
     $more='';
     $log_msg='';
-    foreach(array_keys($original_domain) as $key) {
-        if($original_domain[$key] != $new_domain[$key]) {
-            $log_msg .= $more . $key . "[" .$original_domain[$key] . "=>" . $new_domain[$key] . "]";
+    foreach(array_keys($original_record) as $key) {
+        if($original_record[$key] != $new_record[$key]) {
+            $log_msg .= $more . $key . "[" .$original_record[$key] . "=>" . $new_record[$key] . "]";
             $more= ';';
         }
     }
@@ -566,7 +572,7 @@ EOM
     }
 
     printmsg($log_msg, 'notice');
-    return(array(0, $log_msg));
+    return(array(0, $result));
 }
 
 
@@ -708,7 +714,7 @@ function domains($options="") {
       // Select just the fields requested
       if (isset($options['fields'])) {
         $fields = explode(',', $options['fields']);
-        $subnet = array_intersect_key($subnet, array_flip($fields));
+        $domain = array_intersect_key($domain, array_flip($fields));
       }
 
       ksort($domain);

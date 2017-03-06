@@ -550,6 +550,8 @@ function subnet_modify($options="") {
         return(array(2, $self['error']));
     }
 
+    // Save the record before updating (logging)
+    $original_record = $subnet;
 
     // Check permissions
     if (!auth('subnet_modify')) {
@@ -613,7 +615,8 @@ function subnet_modify($options="") {
     $ip1 = ip_mangle($ip1, $fmt);
     $ip2 = ip_mangle($ip2, $fmt);
     if ($ip1 != $ip2) {
-        $self['error'] = "Invalid subnet specified - did you mean: {$ip2}/{$cidr}?";
+        $self['error'] = "Invalid subnet IP and MASK pair specified - did you mean: {$ip2}/{$cidr}?";
+        printmsg($self['error'], 'error');
         return(array(6, $self['error']));
     }
 
@@ -751,7 +754,7 @@ function subnet_modify($options="") {
 
 
     // Set options['set_vlan']?
-    if (array_key_exists('set_vlan', $options) or $options['campus']) {
+    if (array_key_exists('set_vlan', $options) or isset($options['campus'])) {
         if (!$options['set_vlan'])
             $SET['vlan_id'] = 0;
         else {
@@ -772,13 +775,40 @@ function subnet_modify($options="") {
     if ($status or !$rows)
         return(array(16, $self['error']));
 
-    // Load the updated record for display
-#    list($status, $rows, $subnet) = ona_get_subnet_record(array('id' => $subnet['id']));
+    // Return the success notice
+    unset($SET['network_role_id']);
+    $result['status_msg'] = 'Subnet UPDATED.';
+    $result['module_version'] = $version;
+    list($status, $rows, $new_record) = ona_get_subnet_record(array('id' => $subnet['id']));
+    $result['subnets'][0] = $new_record;
+    $result['subnets'][0]['subnet_type_name'] = $subnet_type['display_name'];
+    $result['subnets'][0]['ip_addr_text'] = ip_mangle($result['subnets'][0]['ip_addr'], 'dotted');
+    $result['subnets'][0]['ip_mask_text'] = ip_mangle($result['subnets'][0]['ip_mask'], 'dotted');
+    $result['subnets'][0]['ip_mask_cidr'] = ip_mangle($result['subnets'][0]['ip_mask'], 'cidr');
 
-    // Return the (human-readable) success notice
-    $text = format_array($SET);
-    $self['error'] = "Subnet UPDATED";
-    return(array(0, $self['error'] . ":{$text}"));
+    unset($result['subnets'][0]['network_role_id']);
+    ksort($result['subnets'][0]);
+
+    // Return the success notice with changes
+    $more='';
+    $log_msg='';
+    foreach(array_keys($original_record) as $key) {
+        if($original_record[$key] != $new_record[$key]) {
+            $log_msg .= $more . $key . "[" .$original_record[$key] . "=>" . $new_record[$key] . "]";
+            $more= ';';
+        }
+    }
+
+    // only print to logfile if a change has been made to the record
+    if($more != '') {
+      $log_msg = "Subnet record UPDATED:{$subnet['id']}: {$log_msg}";
+    } else {
+      $log_msg = "Subnet record UPDATED:{$subnet['id']}: Update attempt produced no changes.";
+    }
+
+    printmsg($log_msg, 'notice');
+
+    return(array(0, $result));
 }
 
 

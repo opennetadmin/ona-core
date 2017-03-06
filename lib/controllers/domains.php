@@ -41,7 +41,6 @@ class domains {
          break;
        case 'DELETE':
          $output = process_output(run_module('domain_del', $args));
-         $response = $response->withStatus(204);
          break;
        case 'POST':
          $output = process_output(run_module('domain_modify', $args + (array)$request->getParsedBody()));

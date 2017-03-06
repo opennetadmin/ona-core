@@ -1404,11 +1404,12 @@ function ona_find_host($search="") {
     $domain_parts = explode('.', $domain['fqdn']);
     foreach ($domain_parts as $part) {
         // Loop through the parts of the domain to find host.sub domain.com type entries..
-        list($status, $dnsrows, $dnsrecs) = db_get_records($onadb, 'dns', array('domain_id' => $domain['id'], 'name' => $hostname, 'dns_view_id' => $view['id']));
+        // Sometimes this loop blanks out the $domain array and causes undefined index messages.  Using @ to mask those for now
+        list($status, $dnsrows, $dnsrecs) = @db_get_records($onadb, 'dns', array('domain_id' => $domain['id'], 'name' => $hostname, 'dns_view_id' => $view['id']));
         // If we didnt just find a dns record.. lets move the period over and try a deeper domain/host pair.
         if (!$dnsrows) {
             $hostname = $hostname.'.'.$part;
-            $name = str_replace("{$part}.", '', $domain['fqdn']);
+            $name = @str_replace("{$part}.", '', $domain['fqdn']);
             list($status, $rows, $domain) = ona_get_domain_record(array('name' => $name));
         } else {
             break;
@@ -1420,13 +1421,14 @@ function ona_find_host($search="") {
     if ($dnsrows) {
         foreach ($dnsrecs as $entry) {
             list($status, $rows, $host) = ona_get_host_record(array('primary_dns_id' => $entry['id']));
-            if ($host['id'])
+            if (isset($host['id']))
                 return(array($status, $rows, $host));
         }
     }
 
     // Otherwise, build a fake host record with only a few entries in it and return that
-    $host = array(
+    // Due to some domain array silliness, use the @ to mask some undefined index messages
+    $host = @array(
         'id'          => 0,
         'name'        => $hostname,
         'fqdn'        => "{$hostname}.{$domain['fqdn']}",
@@ -2067,7 +2069,7 @@ function ona_find_device_type($search="") {
     }
 
     // It's a string - do several sql queries and see if we can get a unique match
-    preg_match_all('/(?P<manuf>\w+), (?P<model>\w+) \((?P<role>\w+)\)/', $search, $parts);
+    preg_match_all('/(?P<manuf>[a-zA-z0-9 \/_-]+), (?P<model>[a-zA-z0-9 \/_-]+) \((?P<role>[a-zA-z0-9 \/_-]+)\)/', $search, $parts);
     if (isset($parts['manuf'][0]))
       list($status, $rows, $manu) = ona_get_manufacturer_record(array('name' => $parts['manuf'][0]));
     if (isset($parts['role'][0]))

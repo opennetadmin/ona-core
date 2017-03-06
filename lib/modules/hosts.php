@@ -25,8 +25,8 @@ function hosts($options="") {
     $from = 'hosts h';
 
     // enable or disable wildcards
-    $wildcard = '%';
-    if (isset($options['nowildcard'])) $wildcard = '';
+    $wildcard = '';
+   # if (isset($options['nowildcard'])) $wildcard = '';
 
 
     // HOST ID
@@ -61,6 +61,7 @@ function hosts($options="") {
 
         // Find the domain name that best matches
         $name = '';
+        $rows = 0;
         $domain = array();
         foreach ($parts as $part) {
             if (!$rows) {
@@ -80,7 +81,7 @@ function hosts($options="") {
         $withdomain = '';
         $hostname = $options['hostname'];
         // If you found a domain in the query, add it to the search, and strip the domain from the host portion.
-        if (array_key_exists('id', $domain) and !$options['domain']) {
+        if (array_key_exists('id', $domain) and !isset($options['domain'])) {
             $withdomain = "AND b.domain_id = {$domain['id']}";
             // Now find what the host part of $search is
             $hostname = str_replace(".{$domain['fqdn']}", '', $options['hostname']);
@@ -89,12 +90,11 @@ function hosts($options="") {
         if (isset($options['domain'])) {
             list($status, $rows, $record) = ona_find_domain($options['domain']);
             if ($record['id']) {
-                $withdomain = "AND b.domain_id = {$record['id']}";
+              $withdomain = "AND b.domain_id = {$record['id']}";
+              // Now find what the host part of $search is
+              $hostname = str_replace(".{$record['fqdn']}", '', $options['hostname']);
             }
-            // Now find what the host part of $search is
-            $hostname = trim($options['hostname']);
         }
-
 
         // MP: Doing the many select IN statements was too slow.. I did this kludge:
         //  1. get a list of all the interfaces
@@ -107,9 +107,11 @@ function hosts($options="") {
             $commait = ',';
         }
 
-        // Just look for the host itself
-        list($status, $rows, $r) = ona_find_host($options['hostname']);
-        if ($rows) $hostids  .= ','.$r['id'];
+        // If it has dots in it like an FQDN, Just look for the single host itself
+        if (strpos($options['hostname'], '.') === true) {
+          list($status, $rows, $r) = ona_find_host($options['hostname']);
+          if ($rows) $hostids  .= ','.$r['id'];
+        }
 
         // MP: this is the old, slow query for reference.
         //
@@ -138,8 +140,6 @@ function hosts($options="") {
 
     // DOMAIN
     if (isset($options['domain']) and !isset($options['hostname'])) {
-        // FIXME: does this clause work correctly?
-        printmsg("FIXME: => Does \$options['domain'] work correctly in list_hosts.inc.php?", 2);
         // Find the domain name piece of the hostname.
         // FIXME: MP this was taken from the ona_find_domain function. make that function have the option
         // to NOT return a default domain.
@@ -149,6 +149,7 @@ function hosts($options="") {
 
         // Find the domain name that best matches
         $name = '';
+        $rows = 0;
         $domain = array();
         foreach ($parts as $part) {
             if (!$rows) {
@@ -176,7 +177,6 @@ and i.id = d.interface_id
 and d.domain_id = ". $onadb->qstr($domain['id']). "
 ) h";
 
-            $and = " AND ";
         }
     }
 
@@ -190,7 +190,6 @@ and d.domain_id = ". $onadb->qstr($domain['id']). "
 
 
 
-
     // MAC
     if (isset($options['mac'])) {
         // Clean up the mac address
@@ -199,8 +198,8 @@ and d.domain_id = ". $onadb->qstr($domain['id']). "
 
         // We do a sub-select to find interface id's that match
         $where .= $and . "h.id IN ( SELECT host_id " .
-                         "        FROM interfaces " .
-                         "        WHERE mac_addr LIKE " . $onadb->qstr($wildcard.$options['mac'].$wildcard) . " ) ";
+                         "FROM interfaces " .
+                         "WHERE mac_addr LIKE " . $onadb->qstr($wildcard.$options['mac'].$wildcard) . " ) ";
         $and = " AND ";
 
     }
@@ -220,8 +219,8 @@ and d.domain_id = ". $onadb->qstr($domain['id']). "
         if ($ip != -1 and $ip_end != -1) {
             // We do a sub-select to find interface id's between the specified ranges
             $where .= $and . "h.id IN ( SELECT host_id " .
-                             "        FROM interfaces " .
-                             "        WHERE ip_addr >= " . $onadb->qstr($ip) . " AND ip_addr <= " . $onadb->qstr($ip_end) . " )";
+                             "FROM interfaces " .
+                             "WHERE ip_addr >= " . $onadb->qstr($ip) . " AND ip_addr <= " . $onadb->qstr($ip_end) . " )";
             $and = " AND ";
         }
     }
@@ -336,11 +335,7 @@ order by b.ip_addr) h";
         $and = " AND ";
     }
 
-    // if $while is still empty, add a 'ID > 0' to it so you see everything.
-    if ($where == '') {
-        $where = 'h.id > 0';
-    }
-
+    printmsg("Query: [from] $from [where] $where", 'debug');
 
     list ($status, $rows, $hosts) =
         db_get_records(
@@ -739,23 +734,16 @@ function host_modify($options="") {
     global $conf, $self, $onadb;
 
     // Version - UPDATE on every edit!
-    $version = '1.07';
-
-    printmsg("DEBUG => host_modify({$options}) called", 3);
-
-    // Parse incoming options string to an array
-    $options = parse_options($options);
+    $version = '2.00';
 
     // Return the usage summary if we need to
-    if ($options['help'] or
-       (!$options['interface'] and !$options['host']) or
-       (!$options['set_host'] and
-        !$options['set_type'] and
-        !$options['set_location'] and
-        !$options['set_notes']
+    if ((!isset($options['interface']) and !isset($options['host'])) or
+       (!isset($options['set_host']) and
+        !isset($options['set_type']) and
+        !isset($options['set_location']) and
+        !isset($options['set_notes'])
        ) ) {
-        // NOTE: Help message lines should not exceed 80 characters for proper display on a console
-        $self['error'] = 'ERROR => Insufficient parameters';
+        $self['error'] = 'Insufficient parameters';
         return(array(1,
 <<<EOM
 
@@ -780,25 +768,27 @@ EOM
     }
 
     // clean up what is passed in
-    $options['interface'] = trim($options['interface']);
-    $options['host'] = trim($options['host']);
+    if (isset($options['interface']))
+      $options['interface'] = trim($options['interface']);
+    if (isset($options['host']))
+      $options['host'] = trim($options['host']);
 
     //
     // Find the host record we're modifying
     //
 
     // If they provided a hostname / ID let's look it up
-    if ($options['host'])
+    if (isset($options['host']))
         list($status, $rows, $host) = ona_find_host($options['host']);
 
     // If they provided a interface ID, IP address, interface name, or MAC address
-    else if ($options['interface']) {
+    else if (isset($options['interface'])) {
         // Find an interface record by something in that interface's record
         list($status, $rows, $interface) = ona_find_interface($options['interface']);
         if ($status or !$rows) {
-            printmsg("DEBUG => Interface not found ({$options['interface']})!",3);
-            $self['error'] = "ERROR => Interface not found ({$options['interface']})!";
-            return(array(4, $self['error'] . "\n"));
+            $self['error'] = "Interface not found ({$options['interface']})!";
+            printmsg($self['error'], 'error');
+            return(array(4, $self['error']));
         }
         // Load the associated host record
         list($status, $rows, $host) = ona_get_host_record(array('id' => $interface['host_id']));
@@ -806,14 +796,20 @@ EOM
 
     // If we didn't get a record then exit
     if (!$host['id']) {
-        printmsg("DEBUG => Host not found ({$options['host']})!",3);
-        $self['error'] = "ERROR => Host not found ({$options['host']})!";
-        return(array(4, $self['error'] . "\n"));
+        $self['error'] = "Host not found ({$options['host']})!";
+        printmsg($self['error'], 'error');
+        return(array(4, $self['error']));
     }
+
+    // Save the record before updating (logging)
+    $original_record = $host;
 
     // Get related Device record info
     list($status, $rows, $device) = ona_get_device_record(array('id' => $host['device_id']));
 
+    // add the device info to the original record so we can compare later
+    $original_record['device_type_id'] = $device['device_type_id'];
+    $original_record['location_id'] = $device['location_id'];
 
     //
     // Define the records we're updating
@@ -821,19 +817,20 @@ EOM
 
     // This variable will contain the updated info we'll insert into the DB
     $SET = array();
+    $SET_DEV = array();
 
     // Set options['set_type']?
-    if ($options['set_type']) {
+    if (isset($options['set_type'])) {
         // Find the Device Type ID (i.e. Type) to use
         list($status, $rows, $device_type) = ona_find_device_type($options['set_type']);
         if ($status or $rows != 1 or !$device_type['id']) {
-            printmsg("DEBUG => The device type specified, {$options['set_type']}, does not exist!",3);
-            $self['error'] = "ERROR => The device type specified, {$options['set_type']}, does not exist!";
-            return(array(6, $self['error'] . "\n"));
+            $self['error'] = "The device type specified, {$options['set_type']}, does not exist!";
+            printmsg($self['error'], 'error');
+            return(array(6, $self['error']));
         }
-        printmsg("DEBUG => Device type ID: {$device_type['id']}", 3);
+        printmsg("Device type ID: {$device_type['id']}", 'debug');
 
-        // Everything looks ok, add it to $SET if it changed...
+        // Everything looks ok, add it to $SET_DEV if it changed...
         if ($device['device_type_id'] != $device_type['id'])
             $SET_DEV['device_type_id'] = $device_type['id'];
     }
@@ -851,9 +848,9 @@ EOM
     if (array_key_exists('set_device', $options)) {
         list($status, $rows, $devid) = ona_find_device($options['set_device']);
         if (!$rows) {
-            printmsg("DEBUG => The device specified, {$options['set_device']}, does not exist!",3);
-            $self['error'] = "ERROR => The device specified, {$options['set_device']}, does not exist!";
-            return(array(7, $self['error'] . "\n"));
+            $self['error'] = "The device specified, {$options['set_device']}, does not exist!";
+            printmsg($self['error'], 'error');
+            return(array(7, $self['error']));
         }
 
         // set the device id
@@ -867,9 +864,9 @@ EOM
         else {
             list($status, $rows, $loc) = ona_find_location($options['set_location']);
             if (!$rows) {
-                printmsg("DEBUG => The location specified, {$options['set_location']}, does not exist!",3);
-                $self['error'] = "ERROR => The location specified, {$options['set_location']}, does not exist!";
-                return(array(7, $self['error'] . "\n"));
+                $self['error'] = "The location specified, {$options['set_location']}, does not exist!";
+                printmsg($self['error'], 'error');
+                return(array(7, $self['error']));
             }
             // If location is changing, then set the variable
             if ($device['location_id'] != $loc['id']) $SET_DEV['location_id'] = $loc['id'];
@@ -879,20 +876,17 @@ EOM
     // Check permissions
     if (!auth('host_modify')) {
         $self['error'] = "Permission denied!";
-        printmsg($self['error'], 0);
-        return(array(10, $self['error'] . "\n"));
+        printmsg($self['error'], 'error');
+        return(array(10, $self['error']));
     }
-
-    // Get the host record before updating (logging)
-    $original_host = $host;
 
     // Update the host record if necessary
     if(count($SET) > 0) {
         list($status, $rows) = db_update_record($onadb, 'hosts', array('id' => $host['id']), $SET);
         if ($status or !$rows) {
-            $self['error'] = "ERROR => host_modify() SQL Query failed for host: " . $self['error'];
-            printmsg($self['error'], 0);
-            return(array(8, $self['error'] . "\n"));
+            $self['error'] = "SQL Query failed for host: " . $self['error'];
+            printmsg($self['error'], 'error');
+            return(array(8, $self['error']));
         }
     }
 
@@ -900,34 +894,48 @@ EOM
     if(count($SET_DEV) > 0) {
         list($status, $rows) = db_update_record($onadb, 'devices', array('id' => $host['device_id']), $SET_DEV);
         if ($status or !$rows) {
-            $self['error'] = "ERROR => host_modify() SQL Query failed for device type: " . $self['error'];
-            printmsg($self['error'], 0);
-            return(array(9, $self['error'] . "\n"));
+            $self['error'] = "SQL Query failed for device type: " . $self['error'];
+            printmsg($self['error'], 'error');
+            return(array(9, $self['error']));
         }
     }
-
-    // Get the host record after updating (logging)
-    list($status, $rows, $new_host) = ona_get_host_record(array('id' => $host['id']));
 
     // Return the success notice
-    $self['error'] = "INFO => Host UPDATED:{$host['id']}: {$new_host['fqdn']}";
+    $result['status_msg'] = 'Host UPDATED.';
+    $result['module_version'] = $version;
+    list($status, $rows, $new_record) = ona_get_host_record(array('id' => $host['id']));
+    list($status, $rows, $new_dev_record) = ona_get_device_record(array('id' => $host['device_id']));
+    // add the device info to the new record to compare
+    $new_record['device_type_id'] = $new_dev_record['device_type_id'];
+    $new_record['location_id'] = $new_dev_record['location_id'];
 
-    $log_msg = "INFO => Host UPDATED:{$host['id']}: ";
-    $more="";
-    foreach(array_keys($host) as $key) {
-        if($host[$key] != $new_host[$key]) {
-            $log_msg .= "{$more}{$key}: {$host[$key]} => {$new_host[$key]}";
-            $more= "; ";
+    $result['hosts'][0] = $new_record;
+
+    ksort($result['hosts'][0]);
+
+    // Return the success notice with changes
+    $more='';
+    $log_msg='';
+    foreach(array_keys($original_record) as $key) {
+        if($original_record[$key] != $new_record[$key]) {
+            $log_msg .= $more . $key . "[" .$original_record[$key] . "=>" . $new_record[$key] . "]";
+            $more= ';';
         }
     }
+
+    // Get success info for dev record
+    list($status, $rows, $new_record) = ona_get_device_record(array('id' => $host['id']));
 
     // only print to logfile if a change has been made to the record
     if($more != '') {
-        printmsg($self['error'], 0);
-        printmsg($log_msg, 0);
+      $log_msg = "Host record UPDATED:{$host['id']}: {$log_msg}";
+    } else {
+      $log_msg = "Host record UPDATED:{$host['id']}: Update attempt produced no changes.";
     }
 
-    return(array(0, $self['error'] . "\n"));
+    printmsg($log_msg, 'notice');
+
+    return(array(0, $result));
 }
 
 
@@ -1245,13 +1253,17 @@ function host_display($options="") {
     global $conf, $self, $onadb;
 
     $text_array = array();
+    $ona_ints = '';
 
     // Version - UPDATE on every edit!
     $version = '2.00';
 
     // Sanitize options[verbose] (default is yes)
-    if (isset($options['verbose']))
+    if (isset($options['verbose'])) {
       $options['verbose'] = sanitize_YN($options['verbose'], 'Y');
+    } else {
+
+    }
 
     // Return the usage summary if we need to
     if (!isset($options['host']) ) {
@@ -1262,7 +1274,6 @@ function host_display($options="") {
 
     // Find the host (and domain) record from $options['host']
     list($status, $rows, $host) = ona_find_host($options['host']);
-    printmsg("Host: {$host['fqdn']}", 'debug');
     if (!$host['id']) {
         $self['error'] = "Unknown host: {$options['host']}";
         printmsg($self['error'], 'error');
@@ -1271,46 +1282,128 @@ function host_display($options="") {
 
 
     // If 'verbose' is enabled, grab some additional info to display
-    if ($options['verbose'] == 'Y') {
+    if (isset($options['verbose']) and $options['verbose'] == 'Y') {
 
-// TODO: if it is a nat interface, maybe process that IP and make it visible?
+      // Device record
+      list($status, $rows, $device) = ona_get_device_record(array('id' => $host['device_id']));
+      if ($rows >= 1) {
+        // Fill out some other device info
+        list($status, $rows, $device_type) = ona_get_device_type_record(array('id' => $device['device_type_id']));
+        list($status, $rows, $role) = ona_get_role_record(array('id' => $device_type['role_id']));
+        list($status, $rows, $model) = ona_get_model_record(array('id' => $device_type['model_id']));
+        list($status, $rows, $manufacturer) = ona_get_manufacturer_record(array('id' => $model['manufacturer_id']));
+        $device['device_type'] = "{$manufacturer['name']}, {$model['name']} ({$role['name']})";
 
-        // Interface record(s)
-        $i = 0;
-        do {
-            list($status, $rows, $interface) = ona_get_interface_record(array('host_id' => $host['id']));
-            if ($rows == 0) { break; }
-            ksort($interface);
-            $i++;
-            $host['interfaces'][$i] = $interface;
-            unset($host['interfaces'][$i]['host_id']);
-        } while ($i < $rows);
+        list($status, $rows, $location) = ona_get_location_record(array('id' => $device['location_id']));
 
-        $host['interface_count'] = $rows;
+        ksort($location);
+        ksort($device);
+        $host['location'] = $location;
+        $host['device'] = $device;
+      }
 
-        // Device record
-        list($status, $rows, $device) = ona_get_device_record(array('id' => $host['device_id']));
-        if ($rows >= 1) {
-            // Fill out some other device info
-            list($status, $rows, $device_type) = ona_get_device_type_record(array('id' => $device['device_type_id']));
-            list($status, $rows, $role) = ona_get_role_record(array('id' => $device_type['role_id']));
-            list($status, $rows, $model) = ona_get_model_record(array('id' => $device_type['model_id']));
-            list($status, $rows, $manufacturer) = ona_get_manufacturer_record(array('id' => $model['manufacturer_id']));
-            $device['device_type'] = "{$manufacturer['name']}, {$model['name']} ({$role['name']})";
+      // Interface record(s)
+      $i = 0;
+      list($status, $introws, $interfaces) = db_get_records($onadb, 'interfaces', "host_id = {$host['id']}");
 
-            list($status, $rows, $location) = ona_get_location_record(array('id' => $device['location_id']));
+      // Now lets find interfaces we share with other hosts as subordinate
+      list($status, $clustsubrows, $clustsub) = db_get_records($onadb, 'interface_clusters', "host_id = {$host['id']}");
+      foreach($clustsub as $sub) {
+        list($status, $clustintrows, $clustint) = ona_get_interface_record(array('id' => $sub['interface_id']));
+        $interfaces[] = $clustint;
+      }
 
-            $host['location'] = $location;
-            $host['device'] = $device;
-        }
+      // Loop all our interfaces and gather information
+      foreach($interfaces as $interface) {
 
-        // Tag records
-        list($status, $rows, $tags) = db_get_records($onadb, 'tags', array('type' => 'host', 'reference' => $host['id']));
-        if ($rows) {
-            foreach ($tags as $tag) {
-                $host['tags'][] = $tag['name'];
+        // Find out if the interface is a NAT interface and skip it
+        list ($isnatstatus, $isnatrows, $isnat) = ona_get_interface_record(array('nat_interface_id' => $interface['id']));
+        if ($isnatrows > 0) { continue; }
+        $i++;
+
+        // get subnet information
+        list($status, $srows, $subnet) = ona_get_subnet_record(array('id' => $interface['subnet_id']));
+
+        // check for shared interfaces
+        list($status, $clust_rows, $clust) = db_get_records($onadb, 'interface_clusters', array('interface_id' => $interface['id']));
+        if ($clust_rows) {
+            list($status, $sharedhostrows, $sharedhost) = ona_get_host_record(array('id' => $clust[0]['host_id']));
+            $interface['shared_host_secondary'] = $sharedhost['fqdn'];
+            $interface['shared_host_primary'] = $host['fqdn'];
+            // if this is the secondary we need to figure out what the primary host is
+            if ($sharedhost['fqdn'] == $host['fqdn']) {
+                list($status, $hostprirows, $hostpri) = ona_get_host_record(array('id' => $interface['host_id']));
+                $interface['shared_host_primary'] = $hostpri['fqdn'];
             }
         }
+
+        // check for nat IPs
+        if ($interface['nat_interface_id']) {
+            list($status, $natrows, $natinterface) = ona_get_interface_record(array('id' => $interface['nat_interface_id']));
+            $interface['nat_ip'] = $natinterface['ip_addr_text'];
+        }
+
+        // fixup some subnet data
+        $subnet['ip_addr_text'] = ip_mangle($subnet['ip_addr'],'dotted');
+        $subnet['ip_mask_text'] = ip_mangle($subnet['ip_mask'],'dotted');
+        $subnet['ip_mask_cidr'] = ip_mangle($subnet['ip_mask'],'cidr');
+        $interface['ip_addr_text'] = ip_mangle($interface['ip_addr'],'dotted');
+
+        // Keep track of interface names
+        $ona_ints .= "{$interface['name']},";
+
+#        foreach ($interface as $key=>$val) if (strripos($key,'_id') !== false) unset($interface[$key]);
+#        foreach ($subnet as $key=>$val) if (strripos($key,'_id') !== false) unset($subnet[$key]);
+
+        // gather interface and subnets into an array for later
+        $allints[$i] = $interface;
+        $subnets['subnet_'.$subnet['id']] = $subnet;
+
+      }
+
+      // Add a list of interface names to the array
+      $host['interface_names'] = implode(',',array_unique(explode(',',rtrim($ona_ints,','))));
+      $host['interface_count'] = $i;
+
+      // Tag records
+      list($status, $rows, $tags) = db_get_records($onadb, 'tags', array('type' => 'host', 'reference' => $host['id']));
+      if ($rows) {
+        foreach ($tags as $tag) {
+          $host['tags'][] = $tag['name'];
+        }
+      }
+
+      // CA records
+      list($status, $rows, $custom_attributes) = db_get_records($onadb, 'custom_attributes', array('table_name_ref' => 'hosts', 'table_id_ref' => $host['id']));
+      if ($rows) {
+        foreach ($custom_attributes as $att) {
+          list($status, $rows, $ca) = ona_get_custom_attribute_record(array('id' => $att['id']));
+          $host['custom_attributes'][$ca['name']] = $ca['value'];
+        }
+      }
+
+      // Append our interface info to the end
+      $i=0;
+      foreach ($allints as $int) {
+        ksort($int);
+        $host['interfaces'][$i] = $int;
+        unset($host['interfaces'][$i]['host_id']);
+        $i++;
+      }
+
+      // Append our subnet info to the end
+      $i=0;
+      foreach ($subnets as $net) {
+        ksort($net);
+        $host['subnets'][$i] = $net;
+        $i++;
+      }
+
+
+    // Get rid of database id values
+    // TODO: maybe make this an option to keep or remove values
+# this breaks the subnet info due to _id being in it
+#    foreach ($details as $key=>$val) if (strripos($key,'_id') !== false) unset($details[$key]);
 
     }
 
@@ -1319,6 +1412,7 @@ function host_display($options="") {
     unset($host['device']['asset_tag']);
     unset($host['device']['location_id']);
     unset($host['device']['serial_number']);
+    unset($host['subnet']['network_role_id']);
 
     // Select just the fields requested
     if (isset($options['fields'])) {

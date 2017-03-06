@@ -19,20 +19,23 @@ function interfaces($options="") {
 
 
     // Start building the "where" clause for the sql query to find the interfaces to display
-    $where = 'id > 0';
-    $and = ' AND ';
+    $where = '';
+    $and = '';
 
     // Subnet
     if (isset($options['subnet'])) {
       list($status, $rows, $subnet) = ona_find_subnet($options['subnet']);
-      $where .= $and . "subnet_id = " . $onadb->qstr($subnet['id']);
-      $and = " AND ";
+      if ($rows) {
+        $where .= $and . "subnet_id = " . $onadb->qstr($subnet['id']);
+        $and = " AND ";
+      }
     }
 
     // HOST
     if (isset($options['host'])) {
       list($status, $rows, $host) = ona_find_host($options['host']);
-      $options['host_id'] = $host['id'];
+      if ($rows)
+        $options['host_id'] = $host['id'];
     }
 
     // HOST ID
@@ -67,6 +70,8 @@ function interfaces($options="") {
        }
     }
 
+    printmsg("Query: [from] interfaces [where] $where", 'debug');
+
     list ($status, $rows, $interfaces) =
         db_get_records(
             $onadb,
@@ -75,7 +80,10 @@ function interfaces($options="") {
             "ip_addr ASC"
         );
 
-
+    if (!$rows) {
+      $text_array['status_msg'] = "No interface records were found";
+      return(array(0, $text_array));
+    }
 
     $i=0;
     foreach ($interfaces as $interface) {
@@ -238,7 +246,7 @@ function interface_add($options="") {
             // Assume duplicate macs on the same host are ok
             list($status, $rows, $interface) = db_get_record($onadb, 'interfaces', "mac_addr LIKE '{$options['mac']}' AND host_id != {$host['id']}");
             if ($status or $rows) {
-                $self['error'] = "MAC conflict: That MAC address ({$options['mac']}) is already in use on another host! You may ignore this warning and add the interface anyway with the \"force=yes\" option. Conflicting interface record ID: {$interface['id']}";
+                $self['error'] = "MAC conflict: That MAC address ({$options['mac']}) is already in use on another host! You may ignore this warning and add the interface anyway with the 'force=yes' option. Conflicting interface record ID: {$interface['id']}";
                 printmsg($self['error'], 'notice');
                 return(array(11, $self['error']));
             }
@@ -345,28 +353,31 @@ function interface_add($options="") {
 ///////////////////////////////////////////////////////////////////////
 function interface_modify($options="") {
     global $conf, $self, $onadb;
-    printmsg("DEBUG => interface_modify({$options}) called", 3);
 
     // Version - UPDATE on every edit!
-    $version = '1.11';
-
-    // Parse incoming options string to an array
-    $options = parse_options($options);
+    $version = '2.00';
 
     // Set options[use_primary] to N if they're not set
-    $options['use_primary'] = sanitize_YN($options['use_primary'], 'N');
+    if (isset($options['use_primary'])) {
+      $options['use_primary'] = sanitize_YN($options['use_primary'], 'N');
+    } else {
+      $options['use_primary'] = 'N';
+    }
     
     // Set options[force] to N if it's not set
-    $options['force'] = sanitize_YN($options['force'], 'N');
+    if (isset($options['force'])) {
+      $options['force'] = sanitize_YN($options['force'], 'N');
+    } else {
+      $options['force'] = 'N';
+    }
 
     // Return the usage summary if we need to
-    if ($options['help'] or
-       (!$options['interface'] and !$options['host']) or
-       (!$options['set_ip'] and
-        !$options['set_mac'] and
-        !$options['set_description'] and
-        !$options['set_last_response'] and
-        !$options['set_name']
+    if ((!isset($options['interface']) and !isset($options['host'])) or
+       (!isset($options['set_ip']) and
+        !isset($options['set_mac']) and
+        !isset($options['set_description']) and
+        !isset($options['set_last_response']) and
+        !isset($options['set_name'])
        ) ) {
         $self['error'] = 'Insufficient parameters';
         return(array(1,$self['error']));
@@ -374,19 +385,19 @@ function interface_modify($options="") {
 
 
     // They provided a interface ID, IP address, interface name, or MAC address
-    if ($options['interface']) {
+    if (isset($options['interface'])) {
         // Find an interface record by something in that interface's record
         list($status, $rows, $interface) = ona_find_interface($options['interface']);
     }
 
     // If a hostname was provided, do a search based on that
-    else if ($options['host']) {
+    else if (isset($options['host'])) {
         // Find a host by the user's input
         list($status, $rows, $host) = ona_find_host($options['host']);
         if (!$host['id']) {
-            printmsg("DEBUG => Host not found ({$options['host']})!",3);
-            $self['error'] = "ERROR => Host not found ({$options['host']})!";
-            return(array(2, $self['error'] . "\n"));
+            $self['error'] = "Host not found ({$options['host']})!";
+            printmsg($self['error'], 'error');
+            return(array(2, $self['error']));
         }
         // If we got one, load an associated interface
         // ... or the primary interface, if the use_primary option is present
@@ -396,91 +407,70 @@ function interface_modify($options="") {
         else {
             list($status, $rows, $interface) = ona_get_interface_record(array('host_id' => $host['id']));
             if ($rows > 1) {
-                printmsg("DEBUG => Specified host ({$options['host']}) has more than one interface!",3);
-                $self['error'] = "ERROR => Specified host ({$options['host']}) has more than one interface!";
-                return(array(3, $self['error'] . "\n"));
+                $self['error'] = "Specified host ({$options['host']}) has more than one interface!";
+                printmsg($self['error'], 'error');
+                return(array(3, $self['error']));
             }
         }
     }
 
     // If we didn't get a record then exit
     if (!$interface or !$interface['id']) {
-        printmsg("DEBUG => Interface not found ({$options['interface']})!",3);
-        $self['error'] = "ERROR => Interface not found ({$options['interface']})!";
-        return(array(4, $self['error'] . "\n"));
+        $self['error'] = "Interface not found ({$options['interface']})!";
+        printmsg($self['error'], 'error');
+        return(array(4, $self['error']));
     }
 
     // This array will contain the updated info we'll insert into the DB
     $SET = array();
 
     // Setting an IP address?
-    if ($options['set_ip']) {
+    if (isset($options['set_ip'])) {
         $options['set_ip'] = trim($options['set_ip']);
         $orig_ip = $options['set_ip'];
         $options['set_ip'] = ip_mangle($options['set_ip'], 'numeric');
         if ($options['set_ip'] == -1) {
-            printmsg("DEBUG => Invalid IP address ({$orig_ip})",3);
-            $self['error'] = "ERROR => Invalid IP address ({$orig_ip})";
-            return(array(5, $self['error'] . "\n"));
+            $self['error'] = "Invalid IP address ({$orig_ip})";
+            printmsg($self['error'], 'error');
+            return(array(5, $self['error']));
         }
 
         // Validate that there isn't already another interface with the same IP address
         list($status, $rows, $record) = ona_get_interface_record("ip_addr = {$options['set_ip']}");
         if ($rows and $record['id'] != $interface['id']) {
-            printmsg("DEBUG => IP conflict: That IP address (" . ip_mangle($orig_ip,'dotted') . ") is already in use!",3);
-            $self['error'] = "ERROR => IP conflict: specified IP (" . ip_mangle($orig_ip,'dotted') . ") is already in use!";
-            return(array(6, $self['error'] . "\nINFO => Conflicting interface record ID: {$record['ID']}\n"));
+            $self['error'] = "IP conflict: specified IP (" . ip_mangle($orig_ip,'dotted') . ") is already in use! Conflicting interface record ID: {$record['id']}";
+            printmsg($self['error'], 'error');
+            return(array(6, $self['error']));
         }
 
         // Since the IP seems available, let's double check and make sure it's not in a DHCP address pool
         list($status, $rows, $pool) = ona_get_dhcp_pool_record("ip_addr_start <= '{$options['set_ip']}' AND ip_addr_end >= '{$options['set_ip']}'");
         if ($status or $rows) {
-            printmsg("DEBUG => IP conflict: That IP address (" . ip_mangle($orig_ip,'dotted') . ") falls within a DHCP address pool!",3);
-            $self['error'] = "ERROR => IP conflict: That IP address (" . ip_mangle($orig_ip,'dotted') . ") falls within a DHCP address pool!";
-            return(array(5, $self['error'] . "\n" .
-                            "INFO => Conflicting DHCP pool record ID: {$pool['id']}\n"));
+            $self['error'] = "IP conflict: That IP address (" . ip_mangle($orig_ip,'dotted') . ") falls within a DHCP address pool! Conflicting DHCP pool record ID: {$pool['id']}";
+            printmsg($self['error'], 'error');
+            return(array(5, $self['error']));
         }
 
         // Find the Subnet (network) ID to use from the IP address
         list($status, $rows, $subnet) = ona_find_subnet(ip_mangle($options['set_ip'], 'dotted'));
         if ($status or !$rows) {
-            printmsg("DEBUG => That IP address (" . ip_mangle($orig_ip,'dotted') . ") is not inside a defined subnet!",3);
-            $self['error'] = "ERROR => That IP address (" . ip_mangle($orig_ip,'dotted') . ") is not inside a defined subnet!";
-            return(array(7, $self['error'] . "\n"));
+            $self['error'] = "That IP address (" . ip_mangle($orig_ip,'dotted') . ") is not inside a defined subnet!";
+            printmsg($self['error'], 'error');
+            return(array(7, $self['error']));
         }
 
         // Validate that the IP address supplied isn't the base or broadcast of the subnet
         if ((is_ipv4($options['set_ip']) && ($options['set_ip'] == $subnet['ip_addr'])) || (!is_ipv4($options['set_ip']) && (!gmp_cmp(gmp_init($options['set_ip']),gmp_init($subnet['ip_addr'])))) ) {
-            printmsg("DEBUG => IP address (" . ip_mangle($orig_ip,'dotted') . ") can't be a subnet's base address!",3);
-            $self['error'] = "ERROR => IP address (" . ip_mangle($orig_ip,'dotted') . ") can't be a subnet's base address!";
-            return(array(8, $self['error'] . "\n"));
+            $self['error'] = "IP address (" . ip_mangle($orig_ip,'dotted') . ") can't be a subnet's base address!";
+            printmsg($self['error'], 'error');
+            return(array(8, $self['error']));
         }
         if (is_ipv4($options['set_ip']) && ($options['set_ip'] == ((4294967295 - $subnet['ip_mask']) + $subnet['ip_addr']) )
             || (!is_ipv4($options['set_ip']) && (!gmp_cmp(gmp_init($options['set_ip']),gmp_add(gmp_init($subnet['ip_addr']),gmp_sub("340282366920938463463374607431768211455", $subnet['ip_mask'])))))
         ) {
-            printmsg("DEBUG => IP address (" . ip_mangle($orig_ip,'dotted') . ") can't be a subnet's broadcast address!",3);
-            $self['error'] = "ERROR => IP address (" . ip_mangle($orig_ip,'dotted') . ") can't be the subnet broadcast address!";
-            return(array(9, $self['error'] . "\n"));
-        }
-
-        // Allow some overrides.
-        if ($options['force'] != 'Y') {
-            // Search for any existing interfaces on the same subnet
-//            list($status, $rows, $record) = ona_get_interface_record(array('subnet_id' => $subnet['id'],
-//                                                                            'host_id'    => $interface['host_id']));
-
-            // Check to be sure we don't exceed maximum lengths
-            if(strlen($options['name']) > 255) {
-                $self['error'] = "ERROR => 'name' exceeds maximum length of 255 characters.";
-                return(array(2, $self['error'] . "\n" .
-                    "NOTICE => You may ignore this error and add the interface anyway with the \"force=yes\" option.\n"));
-            }
-
-            if(strlen($options['description']) > 255) {
-                $self['error'] = "ERROR => 'description' exceeds maximum length of 255 characters.";
-                return(array(2, $self['error'] . "\n" .
-                    "NOTICE => You may ignore this error and add the interface anyway with the \"force=yes\" option.\n"));
-            }
+            $self['error'] = "IP address (" . ip_mangle($orig_ip,'dotted') . ") can't be the subnet broadcast address!";
+            printmsg($self['error'], 'error');
+            return(array(9, $self['error']));
         }
 
         // Make sure we update the ptr record domain if needed.
@@ -503,9 +493,9 @@ function interface_modify($options="") {
             if ($rows>0 and $dnsrec['domain_id'] != $ptrdomain['id']) {
                 list($status, $rows) = db_update_record($onadb, 'dns', array('id' => $dnsrec['id']), array('domain_id' => $ptrdomain['id'], 'ebegin' => date('Y-m-j G:i:s')));
                 if ($status or !$rows) {
-                    $self['error'] = "ERROR => interface_modify() PTR record domain update failed: " . $self['error'];
-                    printmsg($self['error'], 0);
-                    return(array(14, $self['error'] . "\n"));
+                    $self['error'] = "PTR record domain update failed: " . $self['error'];
+                    printmsg($self['error'], 'error');
+                    return(array(14, $self['error']));
                 }
             }
         }
@@ -518,19 +508,12 @@ function interface_modify($options="") {
             foreach($records as $record) {
                 list($status, $rows) = db_update_record($onadb, 'dns_server_domains', array('domain_id' => $record['domain_id']), array('rebuild_flag' => 1));
                 if ($status) {
-                    $self['error'] = "ERROR => dns_record_add() Unable to update rebuild flags for domain.: {$self['error']}";
-                    printmsg($self['error'],0);
-                    return(array(7, $self['error'] . "\n"));
+                    $self['error'] = "dns_record_add() Unable to update rebuild flags for domain.: {$self['error']}";
+                    printmsg($self['error'], 'error');
+                    return(array(7, $self['error']));
                 }
             }
         }
-
-        // Check permissions
-//         if (!authlvl($subnet['LVL'])) {
-//             $self['error'] = "Permission denied!";
-//             printmsg($self['error'], 0);
-//             return(array(13, $self['error'] . "\n"));
-//         }
 
         // Everything looks ok, add it to $SET
         if($interface['subnet_id'] != $subnet['id'])
@@ -547,9 +530,9 @@ function interface_modify($options="") {
             $orig_mac = $options['set_mac'];
             $options['set_mac'] = mac_mangle($options['set_mac'], 1);
             if ($options['set_mac'] == -1) {
-                printmsg("DEBUG => The MAC address specified ({$orig_mac}) is invalid!",3);
-                $self['error'] = "ERROR => The MAC address specified ({$orig_mac}) is invalid!";
-                return(array(11, $self['error'] . "\n"));
+                $self['error'] = "The MAC address specified ({$orig_mac}) is invalid!";
+                printmsg($self['error'], 'error');
+                return(array(11, $self['error']));
             }
 
             // Unless they have opted to allow duplicate mac addresses ...
@@ -558,11 +541,9 @@ function interface_modify($options="") {
                 // Assume duplicate macs on the same host are ok
                 list($status, $rows, $record) = db_get_record($onadb, 'interfaces', "mac_addr LIKE '{$options['set_mac']}' AND host_id != {$interface['host_id']}");
                 if (($rows and $record['id'] != $interface['id']) or $rows > 1) {
-                    printmsg("DEBUG => MAC conflict: That MAC address ({$options['set_mac']}) is already in use on another host!",3);
-                    $self['error'] = "ERROR => MAC conflict: That MAC address ({$options['set_mac']}) is already in use on another host!";
-                    return(array(12, $self['error'] . "\n" .
-                                    "NOTICE => You may ignore this error and update the interface anyway with the \"force=yes\" option.\n" .
-                                    "INFO => Conflicting interface record ID: {$record['id']}\n"));
+                    $self['error'] = "MAC conflict: That MAC address ({$options['set_mac']}) is already in use on another host! You may ignore this error and update the interface anyway with the 'force=yes' option. Conflicting interface record ID: {$record['id']}";
+                    printmsg($self['error'], 'error');
+                    return(array(12, $self['error']));
                 }
             }
         }
@@ -590,22 +571,54 @@ function interface_modify($options="") {
     list($status, $rows, $host) = ona_find_host($interface['host_id']);
     if (!auth('interface_modify')) {
         $self['error'] = "Permission denied!";
-        printmsg($self['error'], 0);
-        return(array(13, $self['error'] . "\n"));
+        printmsg($self['error'], 'error');
+        return(array(13, $self['error']));
     }
 
     // Get the interface record before updating (logging)
-    list($status, $rows, $original_interface) = ona_get_interface_record(array('id' => $interface['id']));
+    list($status, $rows, $original_record) = ona_get_interface_record(array('id' => $interface['id']));
 
     // Update the interface record
     if(count($SET) > 0) {
         list($status, $rows) = db_update_record($onadb, 'interfaces', array('id' => $interface['id']), $SET);
         if ($status or !$rows) {
-            $self['error'] = "ERROR => interface_modify() SQL Query failed: " . $self['error'];
-            printmsg($self['error'], 0);
-            return(array(14, $self['error'] . "\n"));
+            $self['error'] = "SQL Query failed: " . $self['error'];
+            printmsg($self['error'], 'error');
+            return(array(14, $self['error']));
         }
     }
+
+    // Return the success notice
+    $result['status_msg'] = 'Interface UPDATED.';
+    $result['module_version'] = $version;
+    list($status, $rows, $new_record) = ona_get_interface_record(array('id' => $interface['id']));
+    $result['interfaces'][0] = $new_record;
+    $result['interfaces'][0]['ip_addr_text'] = ip_mangle($result['interfaces'][0]['ip_addr'], 'dotted');
+
+    ksort($result['interfaces'][0]);
+
+    // Return the success notice with changes
+    $more='';
+    $log_msg='';
+    unset($original_record['ip_addr']);
+    foreach(array_keys($original_record) as $key) {
+        if($original_record[$key] != $new_record[$key]) {
+            $log_msg .= $more . $key . "[" .$original_record[$key] . "=>" . $new_record[$key] . "]";
+            $more= ';';
+        }
+    }
+
+    // only print to logfile if a change has been made to the record
+    if($more != '') {
+      $log_msg = "Interface record UPDATED:{$interface['id']}: {$log_msg}";
+    } else {
+      $log_msg = "Interface record UPDATED:{$interface['id']}: Update attempt produced no changes.";
+    }
+
+    printmsg($log_msg, 'notice');
+
+    return(array(0, $result));
+/*
 
     // Get the interface record after updating (logging)
     list($status, $rows, $new_interface) = ona_get_interface_record(array('id' => $interface['id']));
@@ -614,9 +627,9 @@ function interface_modify($options="") {
 
     // Return the success notice
     $text = format_array($SET);
-    $self['error'] = "INFO => Interface UPDATED:{$interface['id']}: {$new_int['ip_addr_text']}";
+    $self['error'] = "Interface UPDATED:{$interface['id']}: {$new_int['ip_addr_text']}";
 
-    $log_msg = "INFO => Interface UPDATED:{$interface['id']}:{$new_int['ip_addr_text']}: ";
+    $log_msg = "Interface UPDATED:{$interface['id']}:{$new_int['ip_addr_text']}: ";
     $more="";
     foreach(array_keys($original_interface) as $key) {
         if($original_interface[$key] != $new_interface[$key]) {
@@ -629,7 +642,7 @@ function interface_modify($options="") {
     if($more != '') printmsg($log_msg, 0);
 
     return(array(0, $self['error'] . "\n{$text}\n"));
-
+*/
 }
 
 
