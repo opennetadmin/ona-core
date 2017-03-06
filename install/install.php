@@ -16,6 +16,39 @@ $new_ver = trim(@file_get_contents($base.'/VERSION'));
 $curr_ver = '';
 $install_complete=1;
 
+$longopts = array(
+ 'database_host::',
+ 'admin_login::',
+ 'admin_passwd::',
+ 'sys_login::',
+ 'sys_passwd::',
+ 'database_name::',
+ 'default_domain::',
+);
+
+$options = getopt('h', $longopts);
+
+if (isset($options['h'])) {
+  echo <<<EOL
+
+You can pass any of the following on the command line. Provide appropriate value:
+     --database_host    - DNS or IP to connect to
+     --admin_login      - Login username for database admin user
+     --admin_passwd     - Admin user password
+     --sys_login        - Application user to create
+     --sys_passwd       - Application user password
+     --database_name    - Database name, will be prepended with 'ona_'
+     --default_domain   - Initial DNS domain to add.
+
+example:
+
+php install.php --database_name=default --admin_passwd=my-secret-pw --database_host=mysql --admin_login=root --sys_login=ona_sys --sys_passwd=changeme --default_domain=example.com
+
+
+EOL;
+  exit;
+}
+
 
 
 
@@ -30,9 +63,7 @@ if (!@file_exists($dbconffile)) {
 
     // License info
     echo "ONA is licensed under GPL v2.0.\n";
-    $showlicense = promptUser("Would you like to view license? [y/N] ", 'n');
-    if ($showlicense == 'y') { system("more -80 {$base}/../docs/LICENSE"); }
-    // TODO: Do you agree to the license
+    echo "By using this software you agree to the terms of this license.\n";
 
     check_requirements();
 
@@ -344,7 +375,7 @@ echo $text;
 // This is the section for an brand new install
 function new_install() {
 
-    global $text,$xmlfile_data,$xmlfile_tables,$dbconffile,$status,$new_ver;
+    global $text,$xmlfile_data,$xmlfile_tables,$dbconffile,$status,$new_ver,$options;
 
 
     // Initial text greeting
@@ -360,13 +391,13 @@ EOL;
 
     // Gather info
     $dbtype = 'mysqli'; $adotype = $dbtype;
-    $database_host = promptUser("Database host? ", 'localhost');
-    $admin_login = promptUser("Database admin? ", 'root');
-    $admin_passwd = promptUser("Database admin password? ", '');
-    $sys_login = promptUser("Application Database user name? ", 'ona_sys');
-    $sys_passwd = promptUser("Application Database user password? ", 'changeme');
-    $database_name = promptUser("Database name? ona_", 'default');
-    $default_domain = promptUser("Default DNS domain? ", 'example.com');
+    $database_host = (isset($options['database_host']) ? $options['database_host'] : promptUser("Database host? ", 'localhost'));
+    $admin_login = (isset($options['admin_login']) ? $options['admin_login'] : promptUser("Database admin? ", 'root'));
+    $admin_passwd = (isset($options['admin_passwd']) ? $options['admin_passwd'] : promptUser("Database admin password? ", ''));
+    $sys_login = (isset($options['sys_login']) ? $options['sys_login'] : promptUser("Application Database user name? ", 'ona_sys'));
+    $sys_passwd = (isset($options['sys_passwd']) ? $options['sys_passwd'] : promptUser("Application Database user password? ", 'changeme'));
+    $database_name = (isset($options['database_name']) ? $options['database_name'] : promptUser("Database name? ona_", 'default'));
+    $default_domain = (isset($options['default_domain']) ? $options['default_domain'] : promptUser("Default DNS domain? ", 'example.com'));
 
     // Just to keep things a little bit grouped, lets prepend the database with ona_
     $database_name = 'ona_'.$database_name;
@@ -518,7 +549,7 @@ EOL;
 
             // Update the version element in the sys_config table
             if($db->Execute("UPDATE sys_config SET value='{$new_ver}' WHERE name like 'version'")) {
-               $text .= "Updated local version info.";
+               $text .= "Updated local version info.\n";
             }
             else {
                 $status++;
