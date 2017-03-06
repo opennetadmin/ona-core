@@ -24,6 +24,18 @@ Items I am aware of but have specifically left for later
 * versioning: should it be done in the URL or in the header.. good arguments for both, for now I'm in path.
 * filtering: Gahh.. so first off, most of the querying that exists currently is string based anyway.  no real need for gt,lt,range operations there. Exceptions would be dates, ip addresses (numeric and ranges), possible how many hosts/interfaces/dns records etc are related. It seems most of this is just nice to haves??? What I do need is an ability to search for multiple tags/ca for instance, not just one.
 
+## API testing
+I tried `dredd`.. wanted it to work but it was painful.  doesnt seem ready for prime time.. maybe check it again later.
+dredd does not seem to have proper ordering and does not seem to be intended to do full CI testing.  Just basic documentation validation level testing.  I need more, but maybe it can be helpful to ensure documentation is accurate?
+
+Using `Postman` for now.  ultimately want to use `newman` for CI.
+
+To convert the `blueprint` formatted docs to postman you can use `apimatic`.  Here is what I use
+
+        curl -u user:pass --data-binary @apiary.apib https://apimatic.io/api/transform?format=postman20 -o postman.json
+
+The current methods are to have a separate working postman collection that you would drag elements from the apimatic output from. Wish it were more seamless.
+
 releasing
 =========
 I'm currently using a date based version.. vYY.MM.DD.

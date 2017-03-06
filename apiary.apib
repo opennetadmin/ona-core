@@ -291,14 +291,14 @@ Group Hosts
 
 A Host is basically a system that runs an OS and has `interfaces` with IP addresses on them.  It has a DNS name to identify the host itself. A host is associated with a `device` that describes the actual hardware make and model. Hosts could be both physical or virtual. A Host can also have a location record associated with it to help identify its physical location.
 
-# List all hosts [GET /hosts{?hostname,domain,mac,ip,endip,location,notes,model,role,manufacturer,tag,catype,cavalue,fields,host_id,device_id}]
+# List all hosts [GET /hosts{?hostname,domain,mac,ip,endip,location,notes,model,role,manufacturer,tag,catype,cavalue,fields}]
 
 List all hosts in ONA. Optionally provide search parameters to narrow the returned list.
 
 + Parameters
-  + hostname: `MY-LAN` (optional) - List hosts with the host portion matching this string. Can be used with domain to form an FQDN.
-  + domain: `MY-LAN` (optional) - Match hosts in the domain. Can be used with hostname to form an FQDN.
-  + mac: `MY-LAN` (optional) - Match a specific MAC address, should be only 0-9 and A-F formated.
+  + hostname: `host` (optional) - List hosts with the host portion matching this string. Can be used with domain to form an FQDN.
+  + domain: `example.com` (optional) - Match hosts in the domain. Can be used with hostname to form an FQDN. % wildcards are not supported here.
+  + mac: `005056A7FFFA` (optional) - Match a specific MAC address, should be only 0-9 and A-F formated.
   + ip: `192.168` (optional) - IP address, any single IP will match the containing subnet. Any missing IPv4 octets will be filled with a 0.
   + endip: `192.168.255.255` (optional) - Must be used in combination with the `ip` option. Provides the end IP in a range of IP addresses to match. Any missing IPv4 octets will be filled with a 255.
   + location: `LAX` (optional) - Match based on location. Can be short or long name for location, also postal code.
@@ -306,9 +306,7 @@ List all hosts in ONA. Optionally provide search parameters to narrow the return
   + model: `3750` (optional) - Match on the device model identifier.
   + role: `Switch` (optional) - Match on the device role.
   + manufacturer: `Cisco` (optional) - Match on the device manufacturer.
-  + device_id: `MY-LAN` (optional) - List subnets matching the string. Use % as a wildcard character.
-  + host_id: `MY-LAN` (optional) - List subnets matching the string. Use % as a wildcard character.
-  + tag: `mytag,tag2` (optional) - One or more tags to match comma separated.
+  + tag: `mytag,tag2` (optional) - One or more tags to match, comma separated.
   + catype: `nmap_scan` (optional) - Subnet with a custom attribute type matching string.
   + cavalue: `Y` (optional) - Subnet with a custom attribute value matching string.
   + fields: `id,name` (optional) - A comma separated list of specific result fields to return.
@@ -386,6 +384,7 @@ Delete a host
   + host: `host.example.com` (string) - Hostname or ID new host is associated with.
   + ip: `fd00:172:25:1::d` (string) - Textual representation of the IP address.
   + mac: `005056A7009A` (string) - Layer 2 MAC address for host. Any typical format is supported.
+  + type: `Unknown, Unknown (Manually Added)` (string) - Select the device type. Consists of a Manufacturer, Model (Role).
   + name: `FastEthernet1/0` (string) - Host name as used by the OS.
   + natip: `20.20.15.75` (string) - IP of NAT address to add with this new host.
   + addptr: `Y` (string) - Auto add a PTR record for new IP pointing to host value.
