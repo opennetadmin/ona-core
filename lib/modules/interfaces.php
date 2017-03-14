@@ -22,6 +22,11 @@ function interfaces($options="") {
     $where = '';
     $and = '';
 
+    // enable or disable wildcards
+    $wildcard = '';
+#    $wildcard = '%';
+#    if (isset($options['nowildcard'])) $wildcard = '';
+
     // Subnet
     if (isset($options['subnet'])) {
       list($status, $rows, $subnet) = ona_find_subnet($options['subnet']);
@@ -35,6 +40,7 @@ function interfaces($options="") {
     if (isset($options['host'])) {
       list($status, $rows, $host) = ona_find_host($options['host']);
       if ($rows)
+        // just pass this to the host_id section below
         $options['host_id'] = $host['id'];
     }
 
@@ -68,6 +74,18 @@ function interfaces($options="") {
                 $and = " AND ";
             }
        }
+    }
+
+    // MAC
+    if (isset($options['mac'])) {
+        // Clean up the mac address
+        $options['mac'] = strtoupper($options['mac']);
+        $options['mac'] = preg_replace('/[^%0-9A-F]/', '', $options['mac']);
+
+        // We do a sub-select to find interface id's that match
+        $where .= $and . "mac_addr LIKE " . $onadb->qstr($wildcard.$options['mac'].$wildcard);
+        $and = " AND ";
+
     }
 
     printmsg("Query: [from] interfaces [where] $where", 'debug');

@@ -1262,7 +1262,7 @@ function host_display($options="") {
     if (isset($options['verbose'])) {
       $options['verbose'] = sanitize_YN($options['verbose'], 'Y');
     } else {
-
+      $options['verbose'] = 'Y';
     }
 
     // Return the usage summary if we need to
