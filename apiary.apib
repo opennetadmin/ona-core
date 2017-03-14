@@ -12,6 +12,14 @@ It is possible to extend ONA with the use of plugins.  Some of these plugins pro
 
 # [Plugin documenation index](local/plugins)
 
+<div id="plugcontent" >
+</div>
+<script>
+document.getElementById("plugcontent").innerHTML='<object width="100%" height="100%" type="text/html" data="local/plugins" ></object>';
+ var h = document.getElementById("pluginlist").height();
+        document.getElementById("plugcontent").height(h);
+</script>
+
 
 Group Authentication
 ====================
@@ -121,7 +129,7 @@ Delete a subnet
 + Parameters
   + subnet: `192.168.0.0` - Name or IP of a subnet.
 
-+ Response 204 (application/json;charset=utf-8)
++ Response 200 (application/json;charset=utf-8)
 
 
 ## Get next available IP [GET /subnets/{subnet}/nextip/{?offset}]
@@ -136,17 +144,112 @@ point to search for an available IP.  You can also use `offset` if desired but
 it is simpler to just specify a direct IP to start looking for an available.
 
 + Parameters
-  + subnet: `192.168.10.21` - Name or IP of a subnet.
+  + subnet: `192.168.0.20` - Name or IP of a subnet.
   + offset: `10` (optional) - Offset to add to our subnet input
 
 + Response 200 (application/json;charset=utf-8)
 
         {
           "ip_addr": "3232238115",
-          "ip_addr_text": "192.168.10.35",
+          "ip_addr_text": "192.168.0.30",
           "status_code": 0,
           "status_msg": ""
         }
+
+# Custom Attributes [/subnets/{subnet}/ca]
+## Add Custom Attributes [POST /subnets/{subnet}/ca]
+Assign a Custom Attribute to the subnet.
+
+You must provide one of Subnet, Host, or Vlan. This will be done based on the context of the post or the data in the post itself.
+
++ Parameters
+  + subnet: `192.168.0.0` - Name or IP of a subnet.
+
++ Request (application/json)
+  + Attributes (CA Add)
+
++ Response 200 (application/json;charset=utf-8)
+
+        {
+          "status_code": 0,
+          "status_msg": "Custom Attribute nmap_scan (Y) ADDED to: Subnet 192.168.0.0"
+        }
+
+## List Multiple Custom Attributes [GET]
+List all Custom Attributes assigned to the subnet.
+
++ Parameters
+  + subnet: `192.168.0.0` - Name or IP of a subnet.
+
++ Response 200 (application/json;charset=utf-8)
+
+        {
+          "custom_attribute_count": 1,
+          "custom_attributes": {
+            "nmap_scan": "Y"
+          },
+          "status_code": 0,
+          "status_msg": ""
+        }
+
+
+
+## List Single Custom Attributes [GET /subnets/{subnet}/ca/{type}]
+Assign a Custom Attribute to the subnet.
+
++ Parameters
+  + subnet: `192.168.0.0` - Name or IP of a subnet.
+  + type: `nmap_scan` - The type of custom attribute
+
++ Response 200 (application/json;charset=utf-8)
+
+        { 
+          "custom_attribute_count": 1,
+          "custom_attributes": {
+            "id": "373",
+            "table_name_ref": "subnets",
+            "table_id_ref": "682",
+            "custom_attribute_type_id": "3",
+            "value": "Y",
+            "name": "nmap_scan",
+            "field_validation_rule": "/^[Y|N]$/",
+            "failed_rule_text": "Must be either Y or N",
+            "notes": "Used to determine if this subnet should be scanned by Nmap based tools."
+          },
+          "status_code": 0,
+          "status_msg": ""
+        }
+
+## Modify single Custom Attribute [POST /subnets/{subnet}/ca/{type}]
+Modify a custom attribute
+
++ Parameters
+  + subnet: `192.168.0.0` - Name or IP of a subnet.
+  + type: `nmap_scan` - The type of custom attribute.
+
++ Request (application/json)
+  + Attributes (CA Modify)
+
++ Response 200 (application/json;charset=utf-8)
+
+        {
+          "status_code": 0,
+          "status_msg": "Updated Custom Attribute type: nmap_scan => 'N'."
+        }
+
++ Response 400 (application/json;charset=utf-8)
+
+
+
+## Delete single Custom Attribute [DELETE /subnets/{subnet}/ca/{type}]
+Delete a Custom Attribute
+
++ Parameters
+  + subnet: `192.168.0.0` - Name or IP of a subnet.
+  + type: `nmap_scan` - The type of custom attribute.
+
++ Response 200 (application/json;charset=utf-8)
+
 
 # Data Structures
 
@@ -180,10 +283,6 @@ it is simpler to just specify a direct IP to start looking for an available.
   + set_type: `VLAN` (string) - Subnet type. Must be an existing type in the system
   + campus: `CAMPUS-NAME` (string) - Campus name that `set_vlan` value is assoicated with
   + set_vlan: `VLAN123` (string) - Vlan name to assign, Must provide `campus` as well
-
-
-
-
 
 
 Group Domains
@@ -331,7 +430,7 @@ Return information about a single host.
 The host value can be an ID, FQDN, IP, MAC. Any of these items can be used as the lookup to identify a single host. It must be a unique value. It is recomended to use the Primary FQDN of the host.
 
 + Parameters
-  + host: `router.example.com` - Fully Qualified Domain Name (FQDN) to identify host.
+  + host: `router.example.com` - Fully Qualified Domain Name (FQDN) or IP to identify host.
   + fields: `id,name` (optional) - A comma separated list of specific result fields to return.
 
 + Response 200 (application/json;charset=utf-8)
@@ -343,7 +442,7 @@ Modify a host and set new values
 You can set one or more attributes in your request.
 
 + Parameters
-  + host: `router.example.com` - Fully Qualified Domain Name (FQDN) to identify host.
+  + host: `router.example.com` - Fully Qualified Domain Name (FQDN) or IP to identify host.
 
 + Request (application/json)
   + Attributes (Host Modify)
@@ -357,9 +456,104 @@ You can set one or more attributes in your request.
 Delete a host
 
 + Parameters
-  + host: `router.example.com` - Fully Qualified Domain Name (FQDN) to identify host.
+  + host: `router.example.com` - Fully Qualified Domain Name (FQDN) or IP to identify host.
 
-+ Response 204 (application/json;charset=utf-8)
++ Response 200 (application/json;charset=utf-8)
+
+
+# Custom Attributes [/hosts/{host}/ca]
+## Add Custom Attributes [POST /hosts/{host}/ca]
+Assign a Custom Attribute to the host.
+
+You must provide one of Subnet, Host, or Vlan. This will be done based on the context of the post or the data in the post itself.
+
++ Parameters
+  + host: `router.example.com` - Fully Qualified Domain Name (FQDN) or IP to identify host.
+
++ Request (application/json)
+  + Attributes (CA Add)
+
++ Response 200 (application/json;charset=utf-8)
+
+        {
+          "status_code": 0,
+          "status_msg": "Custom Attribute nmap_scan (Y) ADDED to: Subnet 192.168.0.0"
+        }
+
+## List Multiple Custom Attributes [GET]
+List all Custom Attributes assigned to the host.
+
++ Parameters
+  + host: `router.example.com` - Fully Qualified Domain Name (FQDN) or IP to identify host.
+
++ Response 200 (application/json;charset=utf-8)
+
+        {
+          "custom_attribute_count": 1,
+          "custom_attributes": {
+            "nmap_scan": "Y"
+          },
+          "status_code": 0,
+          "status_msg": ""
+        }
+
+
+
+## List Single Custom Attributes [GET /hosts/{host}/ca/{type}]
+Assign a Custom Attribute to the host.
+
++ Parameters
+  + host: `router.example.com` - Fully Qualified Domain Name (FQDN) or IP to identify host.
+  + type: `nmap_scan` - The type of custom attribute
+
++ Response 200 (application/json;charset=utf-8)
+
+        { 
+          "custom_attribute_count": 1,
+          "custom_attributes": {
+            "id": "373",
+            "table_name_ref": "hosts",
+            "table_id_ref": "682",
+            "custom_attribute_type_id": "3",
+            "value": "Y",
+            "name": "nmap_scan",
+            "field_validation_rule": "/^[Y|N]$/",
+            "failed_rule_text": "Must be either Y or N",
+            "notes": "Used to determine if this subnet should be scanned by Nmap based tools."
+          },
+          "status_code": 0,
+          "status_msg": ""
+        }
+
+## Modify single Custom Attribute [POST /hosts/{host}/ca/{type}]
+Modify a custom attribute
+
++ Parameters
+  + host: `router.example.com` - Fully Qualified Domain Name (FQDN) or IP to identify host.
+  + type: `nmap_scan` - The type of custom attribute.
+
++ Request (application/json)
+  + Attributes (CA Modify)
+
++ Response 200 (application/json;charset=utf-8)
+
+        {
+          "status_code": 0,
+          "status_msg": "Updated Custom Attribute type: nmap_scan => 'N'."
+        }
+
++ Response 400 (application/json;charset=utf-8)
+
+
+
+## Delete single Custom Attribute [DELETE /hosts/{host}/ca/{type}]
+Delete a Custom Attribute
+
++ Parameters
+  + host: `router.example.com` - Fully Qualified Domain Name (FQDN) or IP to identify host.
+  + type: `nmap_scan` - The type of custom attribute.
+
++ Response 200 (application/json;charset=utf-8)
 
 
 # Data Structures
@@ -410,11 +604,15 @@ Group Interfaces
 
 An Interface is where IP addresses are allocated. They also contain attributes about the physical interface name and MAC address. All `hosts` must have at least one interface allocated to them. You can allocate as many more interfaces as desired to a single host. Interfaces can also be shared with one other host for the HSRP,VRRP,CARP type use case.
 
-# List all interfaces [GET /interfaces{?fields}]
+# List all interfaces [GET /interfaces{?host,ip,endip,mac,fields}]
 
 List all interfaces in ONA. Optionally provide search parameters to narrow the returned list.
 
 + Parameters
+  + host: `host.example.com` (optional) - Match hostname matching this string.
+  + ip: `192.168` (optional) - IP address, any single IP will match the containing subnet. Any missing IPv4 octets will be filled with a 0.
+  + endip: `192.168.255.255` (optional) - Must be used in combination with the `ip` option. Provides the end IP in a range of IP addresses to match. Any missing IPv4 octets will be filled with a 255.
+  + mac: `005056A7FFFA` (optional) - Match a specific MAC address, should be only 0-9 and A-F formated.
   + fields: `id,name` (optional) - A comma separated list of specific result fields to return.
 
 + Response 200 (application/json;charset=utf-8)
@@ -463,7 +661,7 @@ Delete a interface
 + Parameters
   + ip: `192.168.0.20` - IP address. IPv4 and IPv6 formats are supported.
 
-+ Response 204 (application/json;charset=utf-8)
++ Response 200 (application/json;charset=utf-8)
 
 
 # Data Structures
@@ -506,6 +704,113 @@ Delete a interface
 
 
 
+Group Custom Attributes
+=======================
+
+
+## Add Custom Attributes [POST /ca]
+Assign a Custom Attribute to the ojbect.
+
+You must provide one of Subnet, Host, or Vlan.
+
++ Request (application/json)
+  + Attributes (CA Add Direct)
+
++ Response 200 (application/json;charset=utf-8)
+
+        {
+          "status_code": 0,
+          "status_msg": "Custom Attribute nmap_scan (Y) ADDED to: Subnet 192.168.0.0"
+        }
+
+## List Multiple Custom Attributes [GET /ca{?fields}]
+List all Custom Attributes assigned to the object.
+
+You must provide one of Subnet, Host, or Vlan.
+
++ Request (application/json)
+  + Attributes (CA)
+
++ Response 200 (application/json;charset=utf-8)
+
+        {
+          "custom_attribute_count": 1,
+          "custom_attributes": {
+            "nmap_scan": "Y"
+          },
+          "status_code": 0,
+          "status_msg": ""
+        }
+
+
+# Specific Custom Attributes [/ca/{type}]
+## List Single Custom Attributes [GET]
+Assign a Custom Attribute.
+
+You must provide one of Subnet, Host, or Vlan.
+
++ Parameters
+  + type: `nmap_scan` - The type of custom attribute
+
++ Request (application/json)
+  + Attributes (CA)
+
++ Response 200 (application/json;charset=utf-8)
+
+        { 
+          "custom_attribute_count": 1,
+          "custom_attributes": {
+            "id": "373",
+            "table_name_ref": "subnets",
+            "table_id_ref": "682",
+            "custom_attribute_type_id": "3",
+            "value": "Y",
+            "name": "nmap_scan",
+            "field_validation_rule": "/^[Y|N]$/",
+            "failed_rule_text": "Must be either Y or N",
+            "notes": "Used to determine if this subnet should be scanned by Nmap based tools."
+          },
+          "status_code": 0,
+          "status_msg": ""
+        }
+
+## Modify single Custom Attribute [POST]
+Modify a custom attribute
+
+You must provide one of Subnet, Host, or Vlan.
++ Parameters
+  + type: `nmap_scan` - The type of custom attribute.
+
++ Request (application/json)
+  + Attributes (CA Modify Direct)
+
++ Response 200 (application/json;charset=utf-8)
+
+        {
+          "status_code": 0,
+          "status_msg": "Updated Custom Attribute type: nmap_scan => 'N'."
+        }
+
++ Response 400 (application/json;charset=utf-8)
+
+
+
+## Delete single Custom Attribute [DELETE]
+Delete a Custom Attribute
+
+You must provide one of Subnet, Host, or Vlan.
+
++ Parameters
+  + type: `nmap_scan` - The type of custom attribute.
+
++ Request (application/json)
+  + Attributes (CA)
+
++ Response 200 (application/json;charset=utf-8)
+
+
+
+
 Data Structures
 ===============
 
@@ -516,3 +821,25 @@ Data Structures
 ## `Status` (object)
   + status_code: `0` (number) - Status code from module
   + status_msg: `Successfully did the thing you asked` (string) - A human readable status message
+
+## `CA` (object)
+  + subnet: `192.168.0.0` (string) - Use if Custom Attribute is assoicated with a Subnet
+  + host: `host.example.com` (string) - Use if Custom Attribute is assoicated with a Host
+  + vlan: `VLAN-EXAMPLE` (string) - Use if Custom Attribute is assoicated with a Vla
+
+## `CA Add` (object)
+  + type: `nmap_scan` (string) - The type of Custom Attribute
+  + value: `Y` (string) - The value of the Custom Attribute
+
+## `CA Modify` (object)
+  + set_value: `N` (string) - New value for the Custom Attribute
+
+## `CA Add Direct` (object)
+  + include CA
+  + include `CA Add`
+
+## `CA Modify Direct` (object)
+  + include CA
+  + include `CA Modify`
+
+

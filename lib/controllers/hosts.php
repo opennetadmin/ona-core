@@ -89,10 +89,34 @@ class hosts {
 
 
 
+   public function ca_any($request, $response, $args) {
+
+     require_once($GLOBALS['base'].'/lib/modules/custom_attributes.php');
+
+     // Process various method types
+     switch ($request->getMethod()) {
+       case 'GET':
+         $output = process_output(run_module('custom_attribute_display', $args + (array)$request->getParsedBody()));
+         break;
+       case 'POST':
+         $output = process_output(run_module('custom_attribute_add', $args + (array)$request->getParsedBody()));
+         $response = $response->withStatus(201);
+         break;
+     }
+
+     // update status code on errors
+     if ($output['status_code'] > 0) {
+       return $response->withJson($output)->withStatus(400);
+     }
+
+     return $response->withJson($output);
+   }
 
 
 
-   public function ca($request, $response, $args) {
+
+
+   public function ca_specific($request, $response, $args) {
 
      require_once($GLOBALS['base'].'/lib/modules/custom_attributes.php');
 
@@ -105,8 +129,8 @@ class hosts {
          $output = process_output(run_module('custom_attribute_del', $args + (array)$request->getParsedBody()));
          break;
        case 'POST':
-         $output = process_output(run_module('custom_attribute_add', $args + (array)$request->getParsedBody()));
-         $response = $response->withStatus(201);
+         $args['set_type']=$args['type'];
+         $output = process_output(run_module('custom_attribute_modify', $args + (array)$request->getParsedBody()));
          break;
      }
 

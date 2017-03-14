@@ -35,7 +35,7 @@ $app->get('/{version:|v1|v2}', function ($request, $response) {
 * This should only be used via HTTPS 
 * user should pass in user and pass in the query
 *
-* The login with validate user/pass using whatever auth method is configured in $conf['authtype']
+* The login will validate user/pass using whatever auth method is configured in $conf['authtype']
 * It will then store the user name in the token for later lookup against permissions
 * this ensures that even if a token has been granted to a user, it will still be a
 * fresh lookup each time it is used to validate perms for that user.
@@ -56,6 +56,7 @@ $app->group('/v1', function () {
       // This is an alt method for tags.. seems 'simpler'? decide if we keep it. not 'consistant'
      # $this->map(['GET', 'DELETE', 'POST'], '/tags/{name}', 'ONA\controllers\subnets:tags');
       $this->map(['GET', 'DELETE', 'POST'], '/ca', 'ONA\controllers\subnets:ca');
+      $this->map(['GET', 'DELETE', 'POST'], '/ca/{type}', 'ONA\controllers\subnets:ca');
       $this->map(['GET', 'DELETE', 'POST'], '/dhcpserver', 'ONA\controllers\subnets:dhcp');
       $this->map(['GET', 'DELETE', 'POST'], '/dhcppool', 'ONA\controllers\subnets:dhcp');
       $this->map(['GET', 'DELETE', 'POST'], '/dhcpoption', 'ONA\controllers\subnets:dhcp');
@@ -99,7 +100,7 @@ $app->group('/v1', function () {
       $this->map(['GET', 'DELETE', 'POST'], '/tags', 'ONA\controllers\hosts:tags');
       // This is an alt method for tags.. seems 'simpler'? decide if we keep it. not 'consistant'
      # $this->map(['GET', 'DELETE', 'POST'], '/tags/{name}', 'ONA\controllers\hosts:tags');
-      $this->map(['GET', 'DELETE', 'POST'], '/ca', 'ONA\controllers\hosts:ca');
+     # $this->map(['GET', 'DELETE', 'POST'], '/ca', 'ONA\controllers\hosts:ca');
 
       $this->group('/interfaces', function () {
         new ONA\controllers\interfaces($this);
@@ -110,7 +111,16 @@ $app->group('/v1', function () {
           $this->map(['GET', 'DELETE', 'POST'], '', 'ONA\controllers\interfaces:Specific');
         });
       });
-    });
+ 
+      $this->group('/ca', function () {
+        $this->map(['GET', 'POST'], '', 'ONA\controllers\hosts:ca_any');
+
+        $this->group('/{type}', function () {
+          $this->map(['GET', 'DELETE', 'POST'], '', 'ONA\controllers\hosts:ca_specific');
+        });
+      });
+
+   });
   });
 
 

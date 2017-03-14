@@ -2,13 +2,9 @@
 
 echo <<<EOL
 <html>
-  <body>
-TODO: make a better stylesheet!<br>
-Currently installed plugins: 
-<br>
-<br>
-<table style='border: 1px solid'>
-  <tr><td>Plugin Name</td><td>Version</td><td>Description</td></tr>
+  <body id="pluginlist" style='border: 1px solid #d9d9d9; border-radius: 6px; padding: 4px; margin: 0px; font: icon;'>
+<table style='width: 100%'>
+  <tr style='background-color: #f2f2f2;'><td>Plugin Name</td><td>Version</td><td>Description</td></tr>
 EOL;
 
 // Gather directory names in the plugin directory
@@ -28,7 +24,7 @@ foreach (new DirectoryIterator('.') as $fileInfo) {
       @include($pluginname.'/plugin_info.php');
       echo "<tr>";
       if (is_file($pluginname.'/docs.html')) {
-        echo  "<td><a href='{$pluginname}/docs.html'>{$pluginname}</a>{$disabled}</td>";
+        echo  "<td><a target='_top' href='{$pluginname}/docs.html'>{$pluginname}</a>{$disabled}</td>";
       } else {
         echo  "<td>{$pluginname}</a>{$disabled}</td>";
       }
