@@ -123,6 +123,16 @@ $app->group('/v1', function () {
    });
   });
 
+  $this->group('/locations', function () {
+    new ONA\controllers\locations($this);
+    $this->map(['GET', 'POST'], '', 'ONA\controllers\locations:Any');
+
+    $this->group('/{reference}', function () {
+      $this->map(['GET', 'DELETE', 'POST'], '', 'ONA\controllers\locations:Specific');
+    });
+  });
+
+
 
 })->add(new ONA\auth\tokenauth());
  
