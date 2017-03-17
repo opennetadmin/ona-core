@@ -669,8 +669,10 @@ function domains($options="") {
 
     // Start building the "where" clause for the sql query to find the records to display
     // DISPLAY ALL
-    $where = "id > 0";
-    $and = " AND ";
+    $where = '';
+    if (!$options)
+      $where = "id > 0";
+    $and = '';
 
     // enable or disable wildcards
     $wildcard = '';
@@ -700,12 +702,15 @@ function domains($options="") {
     }
 
 
+    printmsg("Query: [from] domains [where] $where", 'debug');
 
 
-    list ($status, $rows, $domains) = db_get_records( $onadb, 'domains', $where);
+    $rows=0;
+    if ($where)
+      list ($status, $rows, $domains) = db_get_records( $onadb, 'domains', $where);
 
     if (!$rows) {
-      $text_array['status_msg'] = "No domain records were found";
+      $text_array['status_msg'] = "No domain records were found using your query";
       return(array(0, $text_array));
     }
 

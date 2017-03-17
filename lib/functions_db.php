@@ -91,7 +91,7 @@ function db_pconnect($type, $context_name) {
     if (!isset($ona_contexts[$context_name])) {
         setcookie("ona_context_name", $conf['default_context']);
         //printmsg("Unable to find context name '{$context_name}' in the ona_contexts configuration. Reverting back to '{$conf['default_context']}' context.",'warning');
-        echo "WARNING => Unable to find context name '{$context_name}' in the ona_contexts configuration.  Please check {$base}/etc/database_settings.inc.php is configured properly.  Reverting back to '{$conf['default_context']}' context.\n";
+        echo "WARNING => Unable to find context name '{$context_name}' in the ona_contexts configuration.  Please check {$base}/etc/database_settings.inc.php is configured properly.  Reverting back to '{$conf['default_context']}' context.";
         return $object;
     }
 */
@@ -240,7 +240,7 @@ function db_insert_record($dbh=0, $table="", $insert="") {
 
     // Report any errors
     if ($ok === false or $error) {
-        $self['error'] = 'ERROR => SQL INSERT failed: ' . $error . "\n";
+        $self['error'] = 'SQL INSERT failed: ' . $error;
         return(array(2, 0));
     }
 

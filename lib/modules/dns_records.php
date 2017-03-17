@@ -22,6 +22,9 @@ function dns_records($options="") {
 
     // Start building the "where" clause for the sql query to find the records to display
     $where = '';
+    if (!$options)
+      $where = "id > 0";
+      $and = '';
     $and = '';
     $orderby = '';
 
@@ -112,16 +115,15 @@ function dns_records($options="") {
     }
 
 
-    // Wild card .. if $while is still empty, add a 'ID > 0' to it so you see everything.
-    if ($where == '')
-        $where = 'id > 0';
-
     // If we dont have DNS views turned on, limit data to just the default view.
     // Even if there is data associated with other views, ignore it
-    if (!isset($options['dns_views'])) {
-        $where .= ' AND dns_view_id = 0';
-    }
+   # if (!isset($options['dns_views'])) {
+   #     $where .= $and . ' dns_view_id = 0';
+   # }
 
+
+    $rows=0;
+    $query_debug_msg="Query: [from] dns [where] $where";
 
     // If we get a specific host to look for we must do the following
     // 1. get (A) records that match any interface_id associated with the host
@@ -130,26 +132,29 @@ function dns_records($options="") {
         // If we dont have DNS views turned on, limit data to just the default view.
         // Even if there is data associated with other views, ignore it
         // MP: something strange with this, it should only limit to default view.. sometimes it does not???
-        if (!isset($options['dns_views'])) {
-            $hwhere .= 'dns_view_id = 0 AND ';
-        }
+   #     if (!isset($options['dns_views'])) {
+   #         $hwhere .= 'dns_view_id = 0 AND ';
+   #     }
 
         // Get the host record so we know what the primary interface is
         list($status, $rows, $host) = ona_get_host_record(array('id' => $options['host_id']), '');
+
+        $where='interface_id in (select id from interfaces where host_id = '. $onadb->qstr($options['host_id']) .') OR interface_id in (select interface_id from interface_clusters where host_id = '. $onadb->qstr($options['host_id']) .')';
 
         list ($status, $rows, $dns_records) =
         db_get_records(
             $onadb,
             'dns',
-            $hwhere.'interface_id in (select id from interfaces where host_id = '. $onadb->qstr($options['host_id']) .') OR interface_id in (select interface_id from interface_clusters where host_id = '. $onadb->qstr($options['host_id']) .')',
+            $hwhere.$where,
             "type",
             $conf['search_results_per_page'],
             $offset
         );
 
+        $query_debug_msg="Query: [from] $from [where] ${hwhere}${where}";
 
-    } else {
-        list ($status, $rows, $dns_records) =
+    } else if ($where) {
+       list ($status, $rows, $dns_records) =
             db_get_records(
                 $onadb,
                 'dns',
@@ -160,9 +165,10 @@ function dns_records($options="") {
             );
     }
 
+    printmsg("Query: [from] dns [where] $where", 'debug');
 
     if (!$rows) {
-      $text_array['status_msg'] = "No DNS records were found";
+      $text_array['status_msg'] = "No DNS records were found using your query";
       return(array(0, $text_array));
     }
 

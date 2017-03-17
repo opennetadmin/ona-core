@@ -20,6 +20,8 @@ function interfaces($options="") {
 
     // Start building the "where" clause for the sql query to find the interfaces to display
     $where = '';
+    if (!$options)
+      $where = "id > 0";
     $and = '';
 
     // enable or disable wildcards
@@ -88,9 +90,19 @@ function interfaces($options="") {
 
     }
 
+    // name
+    if (isset($options['name'])) {
+        // We do a sub-select to find interface id's that match
+        $where .= $and . "name LIKE " . $onadb->qstr($wildcard.$options['name'].$wildcard);
+        $and = " AND ";
+
+    }
+
     printmsg("Query: [from] interfaces [where] $where", 'debug');
 
-    list ($status, $rows, $interfaces) =
+    $rows=0;
+    if ($where)
+      list ($status, $rows, $interfaces) =
         db_get_records(
             $onadb,
             'interfaces',
@@ -99,7 +111,7 @@ function interfaces($options="") {
         );
 
     if (!$rows) {
-      $text_array['status_msg'] = "No interface records were found";
+      $text_array['status_msg'] = "No interface records were found using your query";
       return(array(0, $text_array));
     }
 

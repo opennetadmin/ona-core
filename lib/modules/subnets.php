@@ -54,8 +54,10 @@ function subnets($options="") {
 
     // Start building the "where" clause for the sql query to find the subnets to display
     // DISPLAY ALL
-    $where = "id > 0";
-    $and = " AND ";
+    $where = '';
+    if (!$options)
+      $where = "id > 0";
+    $and = '';
 
     // enable or disable wildcards
     $wildcard = '';
@@ -129,11 +131,14 @@ function subnets($options="") {
         $and = " AND ";
     }
 
+    printmsg("Query: [from] subnets [where] $where", 'debug');
 
-    list ($status, $rows, $subnets) = db_get_records( $onadb, 'subnets', $where);
+    $rows=0;
+    if ($where)
+      list ($status, $rows, $subnets) = db_get_records( $onadb, 'subnets', $where);
 
     if (!$rows) {
-      $text_array['status_msg'] = "No subnet records were found";
+      $text_array['status_msg'] = "No subnet records were found with your query";
       return(array(0, $text_array));
     }
 

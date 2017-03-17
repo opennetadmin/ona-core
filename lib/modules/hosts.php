@@ -19,9 +19,11 @@ function hosts($options="") {
 
 
     // Start building the "where" clause for the sql query to find the hosts to display
-    $where = "";
-    $and = "";
-    $orderby = "";
+    $where = '';
+    if (!$options)
+      $where = "id > 0";
+    $and = '';
+    $orderby = '';
     $from = 'hosts h';
 
     // enable or disable wildcards
@@ -337,7 +339,9 @@ order by b.ip_addr) h";
 
     printmsg("Query: [from] $from [where] $where", 'debug');
 
-    list ($status, $rows, $hosts) =
+    $rows=0;
+    if ($where)
+      list ($status, $rows, $hosts) =
         db_get_records(
             $onadb,
             $from,
@@ -347,7 +351,7 @@ order by b.ip_addr) h";
 
 
     if (!$rows) {
-      $text_array['status_msg'] = "No host records were found";
+      $text_array['status_msg'] = "No host records were found with your query";
       return(array(0, $text_array));
     }
 
@@ -372,7 +376,8 @@ order by b.ip_addr) h";
           $host['device'] = $device;
           $host['fqdn'] = $dns['fqdn'];
           $host['domain'] = $dns['domain_fqdn'];
-          $host['hostname'] = $dns['name'];
+          if (isset($dns['name']))
+            $host['hostname'] = $dns['name'];
       }
 
       unset($host['device']['asset_tag']);

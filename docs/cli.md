@@ -49,3 +49,5 @@ Usage Examples
     DELETE /subnets/blahtest|jq
 * Get a list of hostnames for all hosts that have a manufacturer of Cisco
     GET /hosts -q manufacturer=Cisco|jq -r '.hosts | .[].fqdn'
+* Get list of locations matching multiple query fields
+    GET /locations -q 'zip_code=8%&city=Aurora'|jq
