@@ -42,7 +42,6 @@ function get_subnet_usage($subnet_id) {
 /////////////////////
 function subnets($options="") {
     global $self, $onadb;
-    printmsg('Called with options: ('.implode (";",$options).')', 'info');
 
     // Version - UPDATE on every edit!
     $version = '2.00';
@@ -84,6 +83,14 @@ function subnets($options="") {
         $where .= $and . "name LIKE " . $onadb->qstr($wildcard.$options['name'].$wildcard);
         $and = " AND ";
     }
+
+    // HOST
+    if (isset($options['host'])) {
+        list($status, $rows, $host) = ona_find_host($options['host']);
+        $where .= $and . "id in (select subnet_id from interfaces where host_id = " . $onadb->qstr($host['id']) . ')';
+        $and = " AND ";
+    }
+
 
     // IP ADDRESS
     if (isset($options['ip'])) {
@@ -197,7 +204,6 @@ function subnets($options="") {
 ///////////////////////////////////////////////////////////////////////
 function subnet_display($options="") {
     global $self, $onadb;
-    printmsg('Called with options: ('.implode (";",$options).')', 'info');
 
     // Version - UPDATE on every edit!
     $version = '2.00';
@@ -301,7 +307,6 @@ function subnet_display($options="") {
 ///////////////////////////////////////////////////////////////////////
 function subnet_add($options="") {
     global $self, $onadb;
-    printmsg('Called with options: ('.implode (";",$options).')', 'info');
 
     // Version - UPDATE on every edit!
     $version = '2.00';
@@ -528,7 +533,6 @@ function subnet_add($options="") {
 ///////////////////////////////////////////////////////////////////////
 function subnet_modify($options="") {
     global $self, $onadb;
-    printmsg('Called with options: ('.implode (";",$options).')', 'info');
 
     // Version - UPDATE on every edit!
     $version = '2.00';
@@ -848,8 +852,6 @@ function subnet_del($options="") {
 
     // Version - UPDATE on every edit!
     $version = '2.00';
-
-    printmsg('Called with options: ('.implode (";",$options).')', 'info');
 
     // Parse incoming options string to an array
     $options = parse_options($options);
