@@ -51,3 +51,118 @@ Usage Examples
     GET /hosts -q manufacturer=Cisco|jq -r '.hosts | .[].fqdn'
 * Get list of locations matching multiple query fields
     GET /locations -q 'zip_code=8%&city=Aurora'|jq
+
+
+Templating
+----------
+
+At times you may have the desire to generate reports or other configuration from ONA. This can be done faily simply by using a ruby ERB template. Other templating solutions could be used as well but here is a quick example to get you started.
+
+Lets say I've just added my router to ONA and it has several vlan interfaces. I'd like to auto generate the interface configurations for this router. You can quickly do that using the following ERB template:
+
+``` erb
+<%
+# Usage
+#    GET /interfaces -q host=host.example.com | erb -T - debug=true <thisfile.erb>
+#
+# Use the erb '-T -' option to tell erb to handle EOL properly for closing references
+#
+# Pass 'debug=true' if you want to see the content of your JSON processed input
+#
+# By default it will process STDIN.. or if you choose you can pass additional data in as variables
+#    GET /interfaces -q host=host.example.com | erb -T - debug=true subnets=(GET /subnets) <thisfile.erb>
+#
+require 'json'
+input = JSON.load(STDIN)
+input.each do |key, value|
+  instance_variable_set :"@#{key}", value
+end
+
+if defined? debug and debug == "true"
+  puts JSON.pretty_generate(input)
+  exit
+end
+-%>
+<% @interfaces.each do |key, value| -%>
+interface <%= key['name'] %>
+  description <%= key['description'] %>
+  ip address <%= key['ip_addr_text'] -%> 255.255.255.0
+!
+<% end -%>
+```
+
+The ouput from this will look something like:
+
+```
+interface Vlan99
+  description LAN-EXAMPLE1
+  ip address 10.1.99.1 255.255.255.0
+!
+interface Vlan100
+  description LAN-EXAMPLE2
+  ip address 10.1.100.1 255.255.255.0
+!
+interface Vlan101
+  description LAN-EXAMPLE3
+  ip address 10.1.101.1 255.255.255.0
+!
+```
+
+As you can see, this is a simple way to pass the JSON output into an erb template and produce repeating configuration using a loop. This could be done for generating more user friendly reports or any other type of confgiuration.
+
+By default this example is designed to take input on `STDIN`. This should work fine for many situations. Do note however that the subnet mask in the example is staticaly generated. This will not work if our subnets have differing subnet masks. This would require the subnet information from ONA as well since the mask is stored with the subnet, not the interface. You could simply try and build one input that is pushed into `STDIN`. One option here is to continue passing the interface list into `STDIN` but also provide the subnet list as an erb variable. The following extention to our example will do that:
+
+``` erb
+<%
+#
+# Usage
+#   GET /interfaces -q host=router.example.com|erb -T - subnets="$(GET /subnets -q host=router.example.com)" debug=false router_interfaces.erb
+#
+# Use the erb '-T -' option to tell erb to handle EOL properly for closing references
+#
+# Pass 'debug=true' if you want to see the content of your JSON blob input
+#
+# By default it will process STDIN.. or if you choose you can pass additional data in as variables
+#    GET /interfaces -q host=host.example.com | erb -T - debug=true subnets=(GET /subnets) <thisfile.erb>
+#
+require 'json'
+# Process STDIN
+stdinput = JSON.load(STDIN)
+stdinput.each do |key, value|
+  instance_variable_set :"@#{key}", value
+end
+
+if defined? debug and debug == "true"
+  puts JSON.pretty_generate(stdinput)
+end
+
+# Process Subnets CLI variable
+if defined? subnets
+  subnets = JSON.load(subnets)
+  subnets.each do |key, value|
+    instance_variable_set :"@#{key}", value
+  end
+
+  if defined? debug and debug == "true"
+    puts JSON.pretty_generate(subnets)
+  end
+end
+
+# Begin loop of interfaces from STDIN
+@interfaces.each do |interface|
+   # Loop subnets from subnets CLI variable
+   @subnets.each do |subnet|
+     if subnet['id'] == interface['subnet_id']
+       interface['mask'] = subnet['ip_mask_text']
+       break
+     end
+   end
+-%>
+interface <%= interface['name'] %>
+  description <%= interface['description'] %>
+  ip address <%= interface['ip_addr_text'] -%> <%= interface['mask'] %>
+!
+<% end -%>
+```
+
+This just touches the surface of what could be done here. Things such as Nagios configuration, Puppet Node generation etc could be done in this way.
